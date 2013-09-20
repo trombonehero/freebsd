@@ -31,11 +31,14 @@ __FBSDID("$FreeBSD$");
  * Loading modules, booting the system
  */
 
+#include <sys/disk.h>
+
 #include <stand.h>
 #include <string.h>
 
 #include "bootstrap.h"
 
+static int	announce_boot_intent(void);
 static char	*getbootfile(int try);
 static int	loadakernel(int try, int argc, char* argv[]);
 
@@ -53,6 +56,11 @@ static int
 command_boot(int argc, char *argv[])
 {
     struct preloaded_file	*fp;
+
+    /*
+     * Inform the device that we're about to boot.
+     */
+    announce_boot_intent();
 
     /*
      * See if the user has specified an explicit kernel to boot.
@@ -392,6 +400,31 @@ notfound:
     }
 
     return(error);
+}
+
+static int
+announce_boot_intent(void)
+{
+	struct devdesc *dev;
+	int result;
+	const char *currdev;
+	const char *rootpath; /* ignored */
+
+	/*
+	 * Send a 'flush write cache' ioctl to the boot device.
+	 * PXE will interpret this as "ensure your NFS handle matches
+	 * 'vfs.root.mountfrom', if one is set".
+	 */
+
+	currdev = getenv("currdev");
+	if (currdev == NULL)
+		return (0);
+
+	result = archsw.arch_getdev((void **)&dev, currdev, &rootpath);
+	if (result)
+		return (result);
+
+	return dev->d_dev->dv_ioctl(NULL, DIOCGFLUSH, NULL);
 }
 
 static int

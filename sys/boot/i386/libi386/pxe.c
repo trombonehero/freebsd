@@ -29,6 +29,9 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
+#include <sys/disk.h>
+
+#include <assert.h>
 #include <stand.h>
 #include <string.h>
 #include <stdarg.h>
@@ -75,6 +78,7 @@ static int	pxe_strategy(void *devdata, int flag, daddr_t dblk,
 			     size_t size, char *buf, size_t *rsize);
 static int	pxe_open(struct open_file *f, ...);
 static int	pxe_close(struct open_file *f);
+static int	pxe_ioctl(struct open_file *f, u_long cmd, void *data);
 static void	pxe_print(int verbose);
 static void	pxe_cleanup(void);
 static void	pxe_setnfshandle(char *rootpath);
@@ -87,6 +91,14 @@ static int	pxe_netif_get(struct iodesc *desc, void *pkt, size_t len,
 			      time_t timeout);
 static int	pxe_netif_put(struct iodesc *desc, void *pkt, size_t len);
 static void	pxe_netif_end(struct netif *nif);
+
+#ifdef LOADER_NFS_SUPPORT
+extern int	rpc_port;
+static int	pxe_compareroot(const in_addr_t addr0, const char *path0,
+		                const in_addr_t addr1, const char *path1);
+static int	pxe_pivot_nfsroot(const char *mountspec);
+static void	pxe_rpcmountcall(void);
+#endif
 
 #ifdef OLD_NFSV2
 int nfs_getrootfh(struct iodesc*, char*, u_char*);
@@ -133,7 +145,7 @@ struct devsw pxedisk = {
 	pxe_strategy, 
 	pxe_open, 
 	pxe_close, 
-	noioctl,
+	pxe_ioctl,
 	pxe_print,
 	pxe_cleanup
 };
@@ -358,6 +370,121 @@ pxe_close(struct open_file *f)
     return (0);
 }
 
+static int
+pxe_ioctl(struct open_file *f, u_long cmd, void *data)
+{
+#ifdef LOADER_NFS_SUPPORT
+    /*
+     * If we receive the 'flush your write cache' ioctl, check for a
+     * mismatch between boot.nfsroot.* and vfs.root.mountfrom.
+     *
+     * We may need to pivot from the NFS boot directory to a different
+     * NFS root directory.
+     */
+    if (cmd == DIOCGFLUSH)
+	return pxe_pivot_nfsroot(getenv("vfs.root.mountfrom"));
+#endif
+
+    return (0);
+}
+
+#ifdef LOADER_NFS_SUPPORT
+static int
+pxe_pivot_nfsroot(const char *mountspec)
+{
+	static const char NFS_PREFIX[] = "nfs:";
+
+	/*
+	 * This function should only be called after all boot files have been
+	 * loaded and the PXE TFTP stack has been shut down.
+	 */
+	assert(pxe_opens == 0);
+	assert(pxe_sock == -1);
+
+	/*
+	 * Ignore all mountfrom specifications that aren't NFS; the kernel
+	 * can handle them without loader assistance.
+	 */
+	if (mountspec == NULL)
+	    return (0);
+
+	if (strncmp(mountspec, NFS_PREFIX, sizeof(NFS_PREFIX) - 1) != 0) {
+#ifdef PXE_DEBUG
+	    if (pxe_debug)
+		printf("pxe_pivot_nfsroot: ignoring non-NFS root '%s'\n",
+		       mountspec);
+#endif
+	    return (0);
+	}
+
+	/* Ignore the 'nfs:' prefix; we know that we're doing NFS. */
+	mountspec += sizeof(NFS_PREFIX) - 1;
+
+
+	/*
+	 * Compare the current root with vfs.root.mountfrom.
+	 * If they're the same, there's no need to pivot.
+	 */
+	struct in_addr next_ip = { .s_addr = 0 };
+	const char *next_path;
+
+	for (int i = 0; i < FNAME_SIZE; i++)
+	    if (mountspec[i] == ':') {
+		/* inet_addr() needs a null-terminated string. */
+		char addr[i + 1];
+		bcopy(mountspec, addr, i);
+		addr[i] = '\0';
+
+		next_ip.s_addr = inet_addr(addr);
+		next_path = mountspec + i + 1;
+		break;
+	    }
+
+	if (next_ip.s_addr == 0) {
+	    printf("NFS MOUNT ERROR: NFS root '%s' does not contain ':'\n",
+		   mountspec);
+		return (EINVAL);
+	}
+
+	if (pxe_compareroot(rootip.s_addr, rootpath,
+	                    next_ip.s_addr, next_path) == 0)
+	    return (0);
+
+
+	/*
+	 * Do the pivot to the root filesystem.
+	 */
+	printf("pxe_pivot_nfsroot:\n");
+	printf("  boot %s:%s\n", inet_ntoa(rootip), rootpath);
+	printf("  root %s:%s\n", inet_ntoa(next_ip), next_path);
+
+	/*
+	 * pxe_setnfshandle ignores its argument: it uses the global
+	 * 'rootip' and 'rootpath' variables.
+	 */
+	rootip = next_ip;
+	strncpy(rootpath, next_path, FNAME_SIZE);
+
+	pxe_sock = netif_open(NULL);
+
+	pxe_rpcmountcall();
+	pxe_setnfshandle(NULL);
+	setenv("boot.nfsroot.path", next_path, 1);
+	setenv("boot.nfsroot.server", inet_ntoa(next_ip), 1);
+	setenv("dhcp.root-path", mountspec, 1);
+
+	netif_close(pxe_sock);
+	pxe_sock = -1;
+
+#ifdef PXE_DEBUG
+	if (pxe_debug)
+	    pxe_print(0);
+#endif
+
+	return (0);
+}
+#endif	/* LOADER_NFS_SUPPORT */
+
 static void
 pxe_print(int verbose)
 {
@@ -417,7 +544,6 @@ struct nfs_iodesc {
 	/* structure truncated here */
 };
 extern struct	nfs_iodesc nfs_root_node;
-extern int      rpc_port;
 
 static void
 pxe_rpcmountcall()
@@ -469,7 +595,6 @@ struct nfs_iodesc {
 	/* structure truncated */
 };
 extern struct nfs_iodesc nfs_root_node;
-extern int rpc_port;
 
 static void
 pxe_rpcmountcall()
@@ -477,8 +602,10 @@ pxe_rpcmountcall()
 	struct iodesc *d;
 	int error;
 
-	if (!(d = socktodesc(pxe_sock)))
+	if (!(d = socktodesc(pxe_sock))) {
+		printf("NFS MOUNT ERROR: no PXE socket %d\n", pxe_sock);
 		return;
+	}
         d->myport = htons(--rpc_port);
         d->destip = rootip;
 	if ((error = nfs_getrootfh(d, rootpath, &nfs_root_node.fhsize,
@@ -515,6 +642,19 @@ pxe_setnfshandle(char *rootpath)
 	setenv("boot.nfsroot.nfshandlelen", buf, 1);
 }
 #endif	/* OLD_NFSV2 */
+
+
+static int
+pxe_compareroot(const in_addr_t addr0, const char *path0,
+                const in_addr_t addr1, const char *path1)
+{
+	in_addr_t diff = addr0 - addr1;
+
+	if (diff != 0)
+	    return diff;
+
+	return strncmp(path0, path1, FNAME_SIZE);
+}
 #endif /* LOADER_NFS_SUPPORT */
 
 void

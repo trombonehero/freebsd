@@ -1,0 +1,4 @@
+# $FreeBSD$
+
+clang = import('clang/fabfile');
+#libc = import('libc/fabfile');

@@ -1,0 +1,50 @@
+#
+# $FreeBSD$
+#
+# Build description for FreeBSD, written in the Fabrique language
+# (https://fabriquer.github.io).
+#
+
+print('Configuring FreeBSD');
+
+host = import('host.fab');
+print('Host: ' + host.platform.name);
+print(host.platform.architecture);
+
+target = record
+{
+	arch = host.platform.architecture;
+	name =
+		if arch.amd64 'amd64'
+		else if arch.i386 'i386'
+		else
+		{
+			print('Unknown architecture:');
+			print(arch);
+			'unknown'
+		};
+};
+
+print('Target architecture: ' + target.name);
+
+
+includes =
+[
+	file('include')
+	file('sys/sys')
+	file('sys/' + target.name + '/include')
+	file('lib/msun/src')
+	file(buildroot + '/tmproot/include')
+];
+
+clang = import('share/fabrique/clang.fab', target = target);
+
+c = import('share/fabrique/c.fab', includes = includes, target = target);
+cxx = import('share/fabrique/cxx.fab', includes = includes, target = target);
+path = import('share/fabrique/path.fab');
+
+options = import('options.fab');
+print('Options:');
+print(options);
+
+lib = import('lib');

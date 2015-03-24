@@ -1,0 +1,37 @@
+# $FreeBSD$
+
+generated_headers = [
+	tblgen(
+		source = llvmroot + '/include/llvm/IR/Intrinsics.td',
+		output = file('Intrinsics.inc.h'),
+		gen_action = '-gen-intrinsic'
+	)
+];
+
+headerdir = file(buildroot + '/' + subdir.name);
+
+sources = {
+	subdir = llvmroot;
+
+	files(
+		AsmWriter.cpp Attributes.cpp AutoUpgrade.cpp BasicBlock.cpp
+		Comdat.cpp ConstantFold.cpp ConstantRange.cpp Constants.cpp
+		Core.cpp DIBuilder.cpp DataLayout.cpp DebugInfo.cpp DebugLoc.cpp
+		DiagnosticInfo.cpp DiagnosticPrinter.cpp Dominators.cpp
+		Function.cpp GCOV.cpp GVMaterializer.cpp Globals.cpp
+		IRBuilder.cpp IRPrintingPasses.cpp InlineAsm.cpp Instruction.cpp
+		Instructions.cpp IntrinsicInst.cpp LLVMContext.cpp
+		LLVMContextImpl.cpp LeakDetector.cpp LegacyPassManager.cpp
+		MDBuilder.cpp Mangler.cpp Metadata.cpp Module.cpp Pass.cpp
+		PassManager.cpp PassRegistry.cpp Type.cpp TypeFinder.cpp Use.cpp
+		User.cpp Value.cpp ValueSymbolTable.cpp ValueTypes.cpp
+		Verifier.cpp
+		,
+		subdir = 'lib/IR'
+	)
+};
+
+objects = cxx.compile(sources, includes + [ headerdir ], flags = cxxflags,
+                      dependencies = generated_headers);
+
+lib = cxx.static_library(objects, 'llvmcore', subdir);

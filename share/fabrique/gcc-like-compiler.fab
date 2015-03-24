@@ -1,0 +1,63 @@
+default_compiler = args.compiler ? import('which').executable('clang');
+
+cc = action('${compiler} -c ${flags} -target ${target} -o ${object} ${source}',
+            description = 'Compiling ${source}'
+            <- source:file[in],
+               object:file[out],
+               flags:list[string],
+               compiler:file[in],
+               extra_dependencies:list[file[in]] = [],
+               target:string = target);
+
+cxx = action('${compiler} -c ${flags} -target ${target} -o ${object} ${source}',
+             description = 'Compiling ${source}'
+             <- source:file[in],
+                object:file[out],
+                flags:list[string],
+                compiler:file[in],
+                extra_dependencies:list[file[in]] = [],
+                target:string = target);
+
+compile = function(sources:list[file], includes:list[file], flags:list[string],
+                   dependencies:list[file] = [],
+                   compiler:file = default_compiler)
+{
+	includes = foreach dir:file <- includes '-I ' + dir.fullname;
+
+	foreach source <- sources
+	{
+		object = source + '.o';
+		flags = flags + includes + source.cflags ? [];
+
+		cc(source, object, flags, compiler, dependencies);
+		object
+	}
+};
+
+compile_cxx = function(sources:list[file], includes:list[file],
+                       flags:list[string],
+                       dependencies:list[file] = [],
+                       compiler:file = default_compiler + '++')
+{
+	includes = foreach dir:file <- includes '-I ' + dir.fullname;
+
+	foreach source <- sources
+	{
+		object = source + '.o';
+		flags = flags + includes + source.cxxflags ? [];
+
+		cc(source, object, flags, compiler, dependencies);
+		object
+	}
+};
+
+shared_library = function(objects:list[file[in]], libname:string, subdir:file)
+{
+	link = action('${compiler} -shared ${objects} -o ${lib}'
+	              <- objects:list[file[in]], lib:file[out],
+	                 compiler:file[in] = default_compiler);
+
+	lib = subdir + '/lib' + libname + '.so';
+
+	link(objects, lib)
+};

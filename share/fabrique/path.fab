@@ -1,0 +1,11 @@
+#
+# $FreeBSD$
+#
+# Functions for manipulating path names.
+#
+
+join = function(x:string, y:string)
+	if x == '' y
+	else if y == '' x
+	else x + y
+	;

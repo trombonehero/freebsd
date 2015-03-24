@@ -1,0 +1,312 @@
+# $FreeBSD$
+
+llvmroot = subdir.subdir.subdir + 'contrib/llvm';
+
+includes = includes + {
+	subdir = subdir.subdir.subdir;
+
+	[
+		file('sys')
+		file('contrib/libc++/include')
+		llvmroot + '/include'
+		file('lib/clang/include')
+	]
+};
+
+cxxflags = [ '-nostdinc' '-std=c++11' ];
+
+tblgen = function(source:file, output:file, gen_action:string)
+{
+	flags = [ gen_action ] + [ '-I' ] + [ (llvmroot + '/include').fullname ];
+
+	clang.tblgen.llvm(source, output, flags)
+};
+
+modules =
+	[
+		import('libllvmcore')
+		import('libllvmsupport')
+#		import('libclanganalysis')
+	]
+#	+ (if options.MK_CLANG_FULL [ import('libclangarcmigrate') ] else [])
+#	+ [
+#		import('libclangast')
+#		import('libclangbasic')
+#		import('libclangcodegen')
+#		import('libclangdriver')
+#		import('libclangedit')
+#		import('libclangfrontend')
+#		import('libclangfrontendtool')
+#		import('libclanglex')
+#		import('libclangparse')
+#	]
+#	+ (if not options.MK_CLANG_FULL or options.MK_LLDB [
+#		import('libclangrewritecore')
+#		import('libclangrewritefrontend') ] else [])
+#	+ [
+#		import('libclangsema')
+#		import('libclangserialization')
+#	]
+#	+ (if options.MK_CLANG_FULL [
+#		import('libclangstaticanalyzercheckers')
+#		import('libclangstaticanalyzercore')
+#		import('libclangstaticanalyzerfrontend') ] else [])
+#	+ [
+#		import('libllvmanalysis')
+#		import('libllvmasmparser')
+#		import('libllvmasmprinter')
+#		import('libllvmbitreader')
+#		import('libllvmbitwriter')
+#		import('libllvmcodegen')
+#		import('libllvmcore')
+#		import('libllvminstcombine')
+#		import('libllvminstrumentation')
+#		import('libllvmipa')
+#		import('libllvmipo')
+#		import('libllvmirreader')
+#		import('libllvmlinker')
+#		import('libllvmmc')
+#		import('libllvmmcparser')
+#		import('libllvmobjcarcopts')
+#		import('libllvmobject')
+#		import('libllvmoption')
+#		import('libllvmscalaropts')
+#		import('libllvmselectiondag')
+#		import('libllvmsupport')
+#		import('libllvmtablegen')
+#		import('libllvmtarget')
+#		import('libllvmtransformutils')
+#		import('libllvmvectorize')
+#
+#		import('libllvmarmasmparser')
+#		import('libllvmarmcodegen')
+#		import('libllvmarmdesc')
+#		import('libllvmarmdisassembler')
+#		import('libllvmarminfo')
+#		import('libllvmarminstprinter')
+#
+#		import('libllvmmipsasmparser')
+#		import('libllvmmipscodegen')
+#		import('libllvmmipsdesc')
+#		import('libllvmmipsdisassembler')
+#		import('libllvmmipsinfo')
+#		import('libllvmmipsinstprinter')
+#
+#		import('libllvmpowerpcasmparser')
+#		import('libllvmpowerpccodegen')
+#		import('libllvmpowerpcdesc')
+#		import('libllvmpowerpcinfo')
+#		import('libllvmpowerpcinstprinter')
+#
+#		import('libllvmsparcasmparser')
+#		import('libllvmsparccodegen')
+#		import('libllvmsparcdesc')
+#		import('libllvmsparcdisassembler')
+#		import('libllvmsparcinfo')
+#		import('libllvmsparcinstprinter')
+#
+#		import('libllvmx86asmparser')
+#		import('libllvmx86codegen')
+#		import('libllvmx86desc')
+#		import('libllvmx86disassembler')
+#		import('libllvmx86info')
+#		import('libllvmx86instprinter')
+#		import('libllvmx86utils')
+#	]
+#	+ (if options.MK_CLANG_EXTRAS [ import('libllvmdebuginfo') ] else [])
+#	+ (if options.MK_CLANG_EXTRAS or options.MK_LLDB [
+#		import('libllvmexecutionengine')
+#		import('libllvminterpreter')
+#		import('libllvmjit')
+#		import('libllvmmcdisassembler')
+#		import('libllvmmcjit')
+#		import('libllvmruntimedyld') ] else [])
+#	+ (if options.MK_LLDB [
+#		import('liblldb')
+#		import('liblldbAPI')
+#		import('liblldbBreakpoint')
+#		import('liblldbCommands')
+#		import('liblldbCore')
+#		import('liblldbDataFormatters')
+#		import('liblldbExpression')
+#		import('liblldbHostCommon')
+#		import('liblldbHostFreeBSD')
+#		import('liblldbInterpreter')
+#		import('liblldbSymbol')
+#		import('liblldbTarget')
+#		import('liblldbUtility')
+#
+#		import('liblldbPluginABISysV_x86_64')
+#		import('liblldbPluginCXXItaniumABI')
+#		import('liblldbPluginDisassemblerLLVM')
+#		import('liblldbPluginDynamicLoaderStatic')
+#		import('liblldbPluginDynamicLoaderPosixDYLD')
+#		import('liblldbPluginInstructionARM')
+#		import('liblldbPluginObjectContainerBSDArchive')
+#		import('liblldbPluginObjectFileELF')
+#		import('liblldbPluginPlatformFreeBSD')
+#		import('liblldbPluginPlatformGDB')
+#		import('liblldbPluginProcessElfCore')
+#		import('liblldbPluginProcessFreeBSD')
+#		import('liblldbPluginProcessGDBRemote')
+#		import('liblldbPluginProcessPOSIX')
+#		import('liblldbPluginProcessUtility')
+#		import('liblldbPluginSymbolFileDWARF')
+#		import('liblldbPluginSymbolFileSymtab')
+#		import('liblldbPluginSymbolVendorELF')
+#		import('liblldbPluginUnwindAssemblyInstEmulation')
+#		import('liblldbPluginUnwindAssemblyX86') ] else [])
+	;
+
+#libraries =
+#	[
+#		import('libllvmcore')
+#		import('libllvmsupport')
+#		import('libclanganalysis')
+#	]
+#	+
+#	(if options.MK_CLANG_FULL [
+#		import('libclangarcmigrate')
+#	] else [])
+#	+
+#	[
+#		import('libclangast')
+#		import('libclangbasic')
+#		import('libclangcodegen')
+#		import('libclangdriver')
+#		import('libclangedit')
+#		import('libclangfrontend')
+#		import('libclangfrontendtool')
+#		import('libclanglex')
+#		import('libclangparse')
+#	]
+#	+
+#	(if not options.MK_CLANG_FULL or options.MK_LLDB [
+#		import('libclangrewritecore')
+#		import('libclangrewritefrontend')
+#	] else [])
+#	+
+#	[
+#		import('libclangsema')
+#		import('libclangserialization')
+#	]
+#	+
+#	(if options.MK_CLANG_FULL [
+#		import('libclangstaticanalyzercheckers')
+#		import('libclangstaticanalyzercore')
+#		import('libclangstaticanalyzerfrontend')
+#	] else [])
+#	+
+#	[
+#		import('libllvmanalysis')
+#		import('libllvmasmparser')
+#		import('libllvmasmprinter')
+#		import('libllvmbitreader')
+#		import('libllvmbitwriter')
+#		import('libllvmcodegen')
+#		import('libllvmcore')
+#		import('libllvminstcombine')
+#		import('libllvminstrumentation')
+#		import('libllvmipa')
+#		import('libllvmipo')
+#		import('libllvmirreader')
+#		import('libllvmlinker')
+#		import('libllvmmc')
+#		import('libllvmmcparser')
+#		import('libllvmobjcarcopts')
+#		import('libllvmobject')
+#		import('libllvmoption')
+#		import('libllvmscalaropts')
+#		import('libllvmselectiondag')
+#		import('libllvmsupport')
+#		import('libllvmtablegen')
+#		import('libllvmtarget')
+#		import('libllvmtransformutils')
+#		import('libllvmvectorize')
+#
+#		import('libllvmarmasmparser')
+#		import('libllvmarmcodegen')
+#		import('libllvmarmdesc')
+#		import('libllvmarmdisassembler')
+#		import('libllvmarminfo')
+#		import('libllvmarminstprinter')
+#
+#		import('libllvmmipsasmparser')
+#		import('libllvmmipscodegen')
+#		import('libllvmmipsdesc')
+#		import('libllvmmipsdisassembler')
+#		import('libllvmmipsinfo')
+#		import('libllvmmipsinstprinter')
+#
+#		import('libllvmpowerpcasmparser')
+#		import('libllvmpowerpccodegen')
+#		import('libllvmpowerpcdesc')
+#		import('libllvmpowerpcinfo')
+#		import('libllvmpowerpcinstprinter')
+#
+#		import('libllvmsparcasmparser')
+#		import('libllvmsparccodegen')
+#		import('libllvmsparcdesc')
+#		import('libllvmsparcdisassembler')
+#		import('libllvmsparcinfo')
+#		import('libllvmsparcinstprinter')
+#
+#		import('libllvmx86asmparser')
+#		import('libllvmx86codegen')
+#		import('libllvmx86desc')
+#		import('libllvmx86disassembler')
+#		import('libllvmx86info')
+#		import('libllvmx86instprinter')
+#		import('libllvmx86utils')
+#	]
+#	+
+#	(if options.MK_CLANG_EXTRAS [
+#		import('libllvmdebuginfo')
+#	] else [])
+#	+
+#	(if options.MK_CLANG_EXTRAS or options.MK_LLDB [
+#		import('libllvmexecutionengine')
+#		import('libllvminterpreter')
+#		import('libllvmjit')
+#		import('libllvmmcdisassembler')
+#		import('libllvmmcjit')
+#		import('libllvmruntimedyld')
+#	] else [])
+#	+
+#	(if options.MK_LLDB [
+#		import('liblldb')
+#		import('liblldbAPI')
+#		import('liblldbBreakpoint')
+#		import('liblldbCommands')
+#		import('liblldbCore')
+#		import('liblldbDataFormatters')
+#		import('liblldbExpression')
+#		import('liblldbHostCommon')
+#		import('liblldbHostFreeBSD')
+#		import('liblldbInterpreter')
+#		import('liblldbSymbol')
+#		import('liblldbTarget')
+#		import('liblldbUtility')
+#
+#		import('liblldbPluginABISysV_x86_64')
+#		import('liblldbPluginCXXItaniumABI')
+#		import('liblldbPluginDisassemblerLLVM')
+#		import('liblldbPluginDynamicLoaderStatic')
+#		import('liblldbPluginDynamicLoaderPosixDYLD')
+#		import('liblldbPluginInstructionARM')
+#		import('liblldbPluginObjectContainerBSDArchive')
+#		import('liblldbPluginObjectFileELF')
+#		import('liblldbPluginPlatformFreeBSD')
+#		import('liblldbPluginPlatformGDB')
+#		import('liblldbPluginProcessElfCore')
+#		import('liblldbPluginProcessFreeBSD')
+#		import('liblldbPluginProcessGDBRemote')
+#		import('liblldbPluginProcessPOSIX')
+#		import('liblldbPluginProcessUtility')
+#		import('liblldbPluginSymbolFileDWARF')
+#		import('liblldbPluginSymbolFileSymtab')
+#		import('liblldbPluginSymbolVendorELF')
+#		import('liblldbPluginUnwindAssemblyInstEmulation')
+#		import('liblldbPluginUnwindAssemblyX86')
+#	] else [])
+#	;

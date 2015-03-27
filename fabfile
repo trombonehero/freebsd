@@ -8,8 +8,14 @@
 print('Configuring FreeBSD');
 
 host = import('host.fab');
+options = import('options.fab');
+path = import('share/fabrique/path.fab');
+shell = import('share/fabrique/shell.fab');
+
 print('Host: ' + host.platform.name);
-print(host.platform.architecture);
+
+print('Options:');
+print(options);
 
 target = record
 {
@@ -27,6 +33,8 @@ target = record
 
 print('Target architecture: ' + target.name);
 
+clang = import('share/fabrique/clang.fab', target = target);
+tmproot = import('tmproot.fab', target = target);
 
 includes =
 [
@@ -34,17 +42,10 @@ includes =
 	file('sys/sys')
 	file('sys/' + target.name + '/include')
 	file('lib/msun/src')
-	file(buildroot + '/tmproot/include')
+	tmproot.includedir
 ];
-
-clang = import('share/fabrique/clang.fab', target = target);
 
 c = import('share/fabrique/c.fab', includes = includes, target = target);
 cxx = import('share/fabrique/cxx.fab', includes = includes, target = target);
-path = import('share/fabrique/path.fab');
 
-options = import('options.fab');
-print('Options:');
-print(options);
-
-lib = import('lib');
+libraries = import('lib');

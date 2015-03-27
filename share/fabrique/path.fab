@@ -4,8 +4,10 @@
 # Functions for manipulating path names.
 #
 
+sep = '/';
+
 join = function(x:string, y:string)
 	if x == '' y
 	else if y == '' x
-	else x + y
+	else x + sep + y
 	;

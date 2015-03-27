@@ -22,14 +22,14 @@ compile = function(sources:list[file], includes:list[file], flags:list[string],
                    dependencies:list[file] = [],
                    compiler:file = default_compiler)
 {
-	includes = foreach dir:file <- includes '-I ' + dir.fullname;
+	include_flags = foreach dir:file <- includes '-I ' + dir.fullname;
 
 	foreach source <- sources
 	{
 		object = source + '.o';
-		flags = flags + includes + source.cflags ? [];
+		flags = flags + include_flags + source.cflags ? [];
 
-		cc(source, object, flags, compiler, dependencies);
+		cc(source, object, flags, compiler, dependencies + includes);
 		object
 	}
 };
@@ -39,14 +39,14 @@ compile_cxx = function(sources:list[file], includes:list[file],
                        dependencies:list[file] = [],
                        compiler:file = default_compiler + '++')
 {
-	includes = foreach dir:file <- includes '-I ' + dir.fullname;
+	include_flags = foreach dir:file <- includes '-I ' + dir.fullname;
 
 	foreach source <- sources
 	{
 		object = source + '.o';
-		flags = flags + includes + source.cxxflags ? [];
+		flags = flags + include_flags + source.cxxflags ? [];
 
-		cc(source, object, flags, compiler, dependencies);
+		cc(source, object, flags, compiler, dependencies + includes);
 		object
 	}
 };

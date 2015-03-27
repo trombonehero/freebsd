@@ -1,0 +1,8 @@
+cp = action('cp ${flags} ${source} ${destination}'
+	<- source:file[in], destination:file[out], flags:list[string] = []);
+
+copy = function(source:file, destination:file, recursive:bool = false)
+{
+	flags = if recursive [ '-r' ] else [];
+	cp(source, destination, flags)
+};

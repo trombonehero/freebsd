@@ -8,8 +8,6 @@ generated_headers = [
 	)
 ];
 
-#headerdir = file(buildroot + '/' + subdir.name);
-
 sources = {
 	subdir = llvmroot;
 
@@ -31,7 +29,7 @@ sources = {
 	)
 };
 
-objects = cxx.compile(sources, includes + [ subdir ], flags = cxxflags,
+objects = cxx.compile(sources, includes + [ builddir ], flags = cxxflags,
                       dependencies = generated_headers);
 
 lib = cxx.static_library(objects, 'llvmcore', subdir);

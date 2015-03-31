@@ -44,5 +44,5 @@ sources = {
 	)
 };
 
-objects = c.compile(sources, cxxflags);
-lib = c.static_library(objects, 'llvmsupport', subdir);
+objects = cxx.compile(sources, cxxflags, includes);
+lib = cxx.static_library(objects, 'llvmsupport', subdir);

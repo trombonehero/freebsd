@@ -9,13 +9,4 @@ system_includes = args.includes;
 clang = import('clang.fab', target = args.target);
 
 compile = clang.cc;
-
-static_library = function(objects:list[file[in]], libname:string, subdir:file)
-{
-	link = action('${CC} -static ${objects} -o ${lib}'
-	              <- objects:list[file[in]], lib:file[out]);
-
-	lib = subdir + '/lib' + libname + '.a';
-
-	link(objects, lib)
-};
+static_library = clang.static_library;

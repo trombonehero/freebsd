@@ -1,5 +1,5 @@
 default_compiler = args.compiler ? import('which').executable('clang');
-system_includes = args.system_includes ? [];
+system_includes = args.system_includes;
 
 cc = action('${compiler} -c ${flags} -target ${target} -o ${object} ${source}',
             description = 'Compiling ${source}'
@@ -36,8 +36,8 @@ compile = function(sources:list[file], flags:list[string],
 	}
 };
 
-compile_cxx = function(sources:list[file], includes:list[file],
-                       flags:list[string],
+compile_cxx = function(sources:list[file], flags:list[string],
+                       includes:list[file] = system_includes,
                        dependencies:list[file] = [],
                        compiler:file = default_compiler + '++')
 {

@@ -17,12 +17,16 @@ target = arch + '-unknown-freebsd';
 default_cflags:list[string] = [];
 default_cxxflags:list[string] = [];
 
+system_includes:list[file] =
+	args.system_includes ? files(/usr/include /usr/local/include);
+
 which = import('which');
 clang = which.executable('clang');
 clang_tblgen = which.executable('clang-tblgen');
 llvm_tblgen = which.executable('llvm-tblgen');
 
-gcc_like = import('gcc-like-compiler.fab', default_compiler = clang);
+gcc_like = import('gcc-like-compiler.fab', default_compiler = clang,
+	system_includes = system_includes);
 
 cc = gcc_like.compile;
 cxx = gcc_like.compile_cxx;

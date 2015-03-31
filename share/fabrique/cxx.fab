@@ -6,7 +6,8 @@
 
 system_includes = args.includes;
 
-clang = import('clang.fab', target = args.target);
+clang = import('clang.fab', target = args.target,
+	system_includes = system_includes);
 
 compile = clang.cxx;
 static_library = clang.static_library;

@@ -29,7 +29,7 @@ sources = {
 	)
 };
 
-objects = cxx.compile(sources, includes + [ builddir ], flags = cxxflags,
+objects = cxx.compile(sources, cxxflags, includes + [ builddir ],
                       dependencies = generated_headers);
 
 lib = cxx.static_library(objects, 'llvmcore', subdir);

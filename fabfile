@@ -5,17 +5,10 @@
 # (https://fabriquer.github.io).
 #
 
-print('Configuring FreeBSD');
-
 host = import('host.fab');
 options = import('options.fab');
 path = import('share/fabrique/path.fab');
 shell = import('share/fabrique/shell.fab');
-
-print('Host: ' + host.platform.name);
-
-print('Options:');
-print(options);
 
 target = record
 {
@@ -30,8 +23,6 @@ target = record
 			'unknown'
 		};
 };
-
-print('Target architecture: ' + target.name);
 
 clang = import('share/fabrique/clang.fab', target = target);
 tmproot = import('tmproot.fab', target = target);

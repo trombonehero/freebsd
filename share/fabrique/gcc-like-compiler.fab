@@ -10,15 +10,6 @@ cc = action('${compiler} -c ${flags} -target ${target} -o ${object} ${source}',
                extra_dependencies:list[file[in]] = [],
                target:string = target);
 
-cxx = action('${compiler} -c ${flags} -target ${target} -o ${object} ${source}',
-             description = 'Compiling ${source}'
-             <- source:file[in],
-                object:file[out],
-                flags:list[string],
-                compiler:file[in],
-                extra_dependencies:list[file[in]] = [],
-                target:string = target);
-
 compile = function(sources:list[file], flags:list[string],
                    includes:list[file] = system_includes,
                    dependencies:list[file] = [],

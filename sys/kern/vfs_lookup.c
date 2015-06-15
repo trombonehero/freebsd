@@ -182,7 +182,7 @@ namei(struct nameidata *ndp)
 	 */
 	if (error == 0 && IN_CAPABILITY_MODE(td) &&
 	    (cnp->cn_flags & NOCAPCHECK) == 0) {
-		ndp->ni_strictrelative = 1;
+		ndrequire_strict_relative_lookups(ndp, ENOTCAPABLE);
 		if (ndp->ni_dirfd == AT_FDCWD) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_CAPFAIL))
@@ -248,7 +248,7 @@ namei(struct nameidata *ndp)
 			    &rights) ||
 			    ndp->ni_filecaps.fc_fcntls != CAP_FCNTL_ALL ||
 			    ndp->ni_filecaps.fc_nioctls != -1) {
-				ndp->ni_strictrelative = 1;
+				ndrequire_strict_relative_lookups(ndp, ENOTCAPABLE);
 			}
 #endif
 		}
@@ -281,13 +281,13 @@ namei(struct nameidata *ndp)
 		cnp->cn_nameptr = cnp->cn_pnbuf;
 		if (*(cnp->cn_nameptr) == '/') {
 			vrele(dp);
-			if (ndp->ni_strictrelative != 0) {
+			if (ndp->ni_nonrelativeerrno != 0) {
 #ifdef KTRACE
 				if (KTRPOINT(curthread, KTR_CAPFAIL))
 					ktrcapfail(CAPFAIL_LOOKUP, NULL, NULL);
 #endif
 				namei_cleanup_cnp(cnp);
-				return (ENOTCAPABLE);
+				return (ndp->ni_nonrelativeerrno);
 			}
 			while (*(cnp->cn_nameptr) == '/') {
 				cnp->cn_nameptr++;
@@ -622,12 +622,12 @@ dirloop:
 	 *    the jail or chroot, don't let them out.
 	 */
 	if (cnp->cn_flags & ISDOTDOT) {
-		if (ndp->ni_strictrelative != 0) {
+		if (ndp->ni_nonrelativeerrno != 0) {
 #ifdef KTRACE
 			if (KTRPOINT(curthread, KTR_CAPFAIL))
 				ktrcapfail(CAPFAIL_LOOKUP, NULL, NULL);
 #endif
-			error = ENOTCAPABLE;
+			error = ndp->ni_nonrelativeerrno;
 			goto bad;
 		}
 		if ((cnp->cn_flags & ISLASTCN) != 0 &&
@@ -1062,7 +1062,7 @@ NDINIT_ALL(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
 	ndp->ni_dirp = namep;
 	ndp->ni_dirfd = dirfd;
 	ndp->ni_startdir = startdir;
-	ndp->ni_strictrelative = 0;
+	ndp->ni_nonrelativeerrno = 0;
 	if (rightsp != NULL)
 		ndp->ni_rightsneeded = *rightsp;
 	else
@@ -1120,6 +1120,38 @@ NDFREE(struct nameidata *ndp, const u_int flags)
 	    (ndp->ni_cnd.cn_flags & SAVESTART)) {
 		vrele(ndp->ni_startdir);
 		ndp->ni_startdir = NULL;
+	}
+}
+
+void
+ndrequire_strict_relative_lookups(struct nameidata *ndp, int errnum)
+{
+	/*
+	 * Monotonic ordering of possible field values:
+	 *
+	 * EPERM - user-level code has requested an O_BENEATH lookup
+	 * ENOTCAPABLE - Capsicum demands strict relative lookups
+	 * 0 - allow relative lookups
+	 *
+	 * We can always move up this list but never down.
+	 */
+
+	KASSERT((errnum == EPERM) || (errnum == ENOTCAPABLE),
+	        ("invalid errno (not EPERM or ENOTCAPABLE)"));
+
+	switch (errnum) {
+	case EPERM:
+		ndp->ni_nonrelativeerrno = errnum;
+		break;
+
+	case ENOTCAPABLE:
+		if (ndp->ni_nonrelativeerrno != EPERM) {
+			ndp->ni_nonrelativeerrno = errnum;
+		}
+		break;
+
+	default:
+		KASSERT(false, ("invalid errno for strict relative lookups"));
 	}
 }
 

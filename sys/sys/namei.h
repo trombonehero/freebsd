@@ -73,7 +73,7 @@ struct nameidata {
 	struct	vnode *ni_rootdir;	/* logical root directory */
 	struct	vnode *ni_topdir;	/* logical top directory */
 	int	ni_dirfd;		/* starting directory for *at functions */
-	int	ni_strictrelative;	/* relative lookup only; no '..' */
+	int	ni_nonrelativeerrno;	/* errno for non-relative (..) lookup */
 	/*
 	 * Results: returned from namei
 	 */
@@ -150,7 +150,8 @@ struct nameidata {
 #define	AUDITVNODE2	0x08000000 /* audit the looked up vnode information */
 #define	TRAILINGSLASH	0x10000000 /* path ended in a slash */
 #define	NOCAPCHECK	0x20000000 /* do not perform capability checks */
-#define	PARAMASK	0x3ffffe00 /* mask of parameter descriptors */
+#define	BENEATH		0x40000000 /* strict downwards-only lookup */
+#define	PARAMASK	0x7ffffe00 /* mask of parameter descriptors */
 
 /*
  * Initialization of a nameidata structure.
@@ -167,6 +168,12 @@ struct nameidata {
 void NDINIT_ALL(struct nameidata *ndp, u_long op, u_long flags,
     enum uio_seg segflg, const char *namep, int dirfd, struct vnode *startdir,
     cap_rights_t *rightsp, struct thread *td);
+
+/*
+ * Set the ni_nonrelativeerrno field of a struct nameidata according to a
+ * monotonically-increasing policy.
+ */
+void ndrequire_strict_relative_lookups(struct nameidata*, int errnum);
 
 #define NDF_NO_DVP_RELE		0x00000001
 #define NDF_NO_DVP_UNLOCK	0x00000002

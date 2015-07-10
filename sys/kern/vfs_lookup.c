@@ -646,11 +646,20 @@ dirloop:
 	 *    the jail or chroot, don't let them out.
 	 */
 	if (cnp->cn_flags & ISDOTDOT) {
-		if (ndp->ni_nonrelativeerrno != 0) {
 #ifdef KTRACE
+		switch (ndp->ni_nonrelativeerrno) {
+		case EPERM:
+			if (KTRPOINT(curthread, KTR_NAMEI))
+				ktrnamei(cnp->cn_nameptr);
+			break;
+
+		case ENOTCAPABLE:
 			if (KTRPOINT(curthread, KTR_CAPFAIL))
 				ktrcapfail(CAPFAIL_LOOKUP, NULL, NULL);
+			break;
+		}
 #endif
+		if (ndp->ni_nonrelativeerrno != 0) {
 			error = ndp->ni_nonrelativeerrno;
 			goto bad;
 		}

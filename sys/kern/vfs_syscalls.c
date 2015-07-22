@@ -1016,6 +1016,8 @@ kern_openat(struct thread *td, int fd, char *path, enum uio_seg pathseg,
 		 * Don't do this for capability or O_BENEATH lookups: we don't
 		 * understand exactly what would happen, and we don't think
 		 * that it ever should.
+		 *
+		 * XXXJA: can fdopen() ever be called with O_BENEATH?
 		 */
 		if (nd.ni_nonrelativeerrno == 0 &&
 		    (error == ENODEV || error == ENXIO) &&

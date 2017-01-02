@@ -995,6 +995,8 @@
 				    id_t id, const struct \
 				    vm_domain_policy_entry *policy); }
 550	AUE_FSYNC	STD	{ int fdatasync(int fd); }
+551	AUE_NULL	STD	{ int fldexec(int interpreter, int fd, \
+				    char **argv, char **envv); }
 
 ; Please copy any additions and changes to the following compatability tables:
 ; sys/compat/freebsd32/syscalls.master

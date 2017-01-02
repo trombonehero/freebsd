@@ -330,6 +330,7 @@ FBSD_1.1 {
 	fchmodat;
 	fchownat;
 	fexecve;
+	fldexec;
 	fstatat;
 	futimesat;
 	jail_get;

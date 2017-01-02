@@ -241,6 +241,36 @@ sys_fexecve(struct thread *td, struct fexecve_args *uap)
 	error = exec_copyin_args(&args, NULL, UIO_SYSSPACE,
 	    uap->argv, uap->envv);
 	if (error == 0) {
+		args.interpreter = -1;
+		args.fd = uap->fd;
+		error = kern_execve(td, &args, NULL);
+	}
+	post_execve(td, error, oldvmspace);
+	return (error);
+}
+
+#ifndef _SYS_SYSPROTO_H_
+struct fldexec_args {
+	int	interpreter;
+	int	fd;
+	char	**argv;
+	char	**envv;
+}
+#endif
+int
+sys_fldexec(struct thread *td, struct fldexec_args *uap)
+{
+	struct image_args args;
+	struct vmspace *oldvmspace;
+	int error;
+
+	error = pre_execve(td, &oldvmspace);
+	if (error != 0)
+		return (error);
+	error = exec_copyin_args(&args, NULL, UIO_SYSSPACE,
+	    uap->argv, uap->envv);
+	if (error == 0) {
+		args.interpreter = uap->interpreter;
 		args.fd = uap->fd;
 		error = kern_execve(td, &args, NULL);
 	}

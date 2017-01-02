@@ -1081,3 +1081,5 @@
 				    id_t id, \
 				    const struct vm_domain_policy *policy); }
 550	AUE_FSYNC	NOPROTO	{ int fdatasync(int fd); }
+551	AUE_NULL	STD	{ int fldexec(int rtld, int bin, char **argv, \
+				    char **envv); }

@@ -87,8 +87,10 @@ __FBSDID("$FreeBSD$");
 static int __elfN(check_header)(const Elf_Ehdr *hdr);
 static Elf_Brandinfo *__elfN(get_brandinfo)(struct image_params *imgp,
     const char *interp, int interp_name_len, int32_t *osrel);
-static int __elfN(load_file)(struct proc *p, const char *file, u_long *addr,
+static int __elfN(load_file)(struct proc *p, struct vnode *vp, u_long *addr,
     u_long *entry, size_t pagesize);
+static int __elfN(load_path)(struct proc *p, const char *path, u_long *addr,
+	u_long *entry, size_t pagesize);
 static int __elfN(load_section)(struct image_params *imgp, vm_offset_t offset,
     caddr_t vmaddr, size_t memsz, size_t filsz, vm_prot_t prot,
     size_t pagesize);
@@ -616,17 +618,15 @@ __elfN(load_section)(struct image_params *imgp, vm_offset_t offset,
  * the entry point for the loaded file.
  */
 static int
-__elfN(load_file)(struct proc *p, const char *file, u_long *addr,
+__elfN(load_file)(struct proc *p, struct vnode *vp, u_long *addr,
 	u_long *entry, size_t pagesize)
 {
 	struct {
-		struct nameidata nd;
 		struct vattr attr;
 		struct image_params image_params;
 	} *tempdata;
 	const Elf_Ehdr *hdr = NULL;
 	const Elf_Phdr *phdr = NULL;
-	struct nameidata *nd;
 	struct vattr *attr;
 	struct image_params *imgp;
 	vm_prot_t prot;
@@ -634,17 +634,7 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr,
 	u_long base_addr = 0;
 	int error, i, numsegs;
 
-#ifdef CAPABILITY_MODE
-	/*
-	 * XXXJA: This check can go away once we are sufficiently confident
-	 * that the checks in namei() are correct.
-	 */
-	if (IN_CAPABILITY_MODE(curthread))
-		return (ECAPMODE);
-#endif
-
 	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
-	nd = &tempdata->nd;
 	attr = &tempdata->attr;
 	imgp = &tempdata->image_params;
 
@@ -657,14 +647,7 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr,
 	imgp->image_header = NULL;
 	imgp->object = NULL;
 	imgp->execlabel = NULL;
-
-	NDINIT(nd, LOOKUP, LOCKLEAF | FOLLOW, UIO_SYSSPACE, file, curthread);
-	if ((error = namei(nd)) != 0) {
-		nd->ni_vp = NULL;
-		goto fail;
-	}
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	imgp->vp = nd->ni_vp;
+	imgp->vp = vp;
 
 	/*
 	 * Check permissions, modes, uid, etc on the file, and "open" it.
@@ -681,9 +664,9 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr,
 	 * Also make certain that the interpreter stays the same, so set
 	 * its VV_TEXT flag, too.
 	 */
-	VOP_SET_TEXT(nd->ni_vp);
+	VOP_SET_TEXT(vp);
 
-	imgp->object = nd->ni_vp->v_object;
+	imgp->object = vp->v_object;
 
 	hdr = (const Elf_Ehdr *)imgp->image_header;
 	if ((error = __elfN(check_header)(hdr)) != 0)
@@ -736,17 +719,47 @@ fail:
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
-	if (nd->ni_vp)
-		vput(nd->ni_vp);
-
+	vput(vp);
 	free(tempdata, M_TEMP);
 
 	return (error);
 }
 
+/*
+ * Load a file into memory as specified by a path.
+ */
+static int
+__elfN(load_path)(struct proc *p, const char *path, u_long *addr,
+	u_long *entry, size_t pagesize)
+{
+	struct nameidata nd;
+	struct vnode *vp = NULL;
+	int error;
+
+#ifdef CAPABILITY_MODE
+	/*
+	 * XXXJA: This check can go away once we are sufficiently confident
+	 * that the checks in namei() are correct.
+	 */
+	if (IN_CAPABILITY_MODE(curthread))
+		return (ECAPMODE);
+#endif
+
+	NDINIT(&nd, LOOKUP, LOCKLEAF | FOLLOW, UIO_SYSSPACE, path, curthread);
+	error = namei(&nd);
+	vp = nd.ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	if (error != 0) {
+		return (error);
+	}
+
+	return __elfN(load_file)(p, vp, addr, entry, pagesize);
+}
+
 static int
 __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 {
+	cap_rights_t rights;
 	struct thread *td;
 	const Elf_Ehdr *hdr;
 	const Elf_Phdr *phdr;
@@ -760,7 +773,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	u_long text_size, data_size, total_size, text_addr, data_addr;
 	u_long seg_size, seg_addr, addr, baddr, et_dyn_addr, entry, proghdr;
 	int32_t osrel;
-	int error, i, n, interp_name_len, have_interp;
+	int error, i, n, interp_fd, interp_name_len, have_interp;
 
 	hdr = (const Elf_Ehdr *)imgp->image_header;
 
@@ -810,6 +823,10 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 			break;
 		case PT_INTERP:
 			/* Path to interpreter */
+			if (interp != NULL) {
+				/* fldexec() is overriding the interpreter */
+				break;
+			}
 			if (phdr[i].p_filesz > MAXPATHLEN) {
 				uprintf("Invalid PT_INTERP\n");
 				error = ENOEXEC;
@@ -1007,12 +1024,26 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	if (interp != NULL) {
 		have_interp = FALSE;
 		VOP_UNLOCK(imgp->vp, 0);
+		if ((interp_fd = imgp->args->interpreter) != -1) {
+			/* fldexec() is overriding the interpreter */
+			error = fgetvp_exec(td, interp_fd,
+			    cap_rights_init(&rights, CAP_FEXECVE), &imgp->vp);
+			if (error) {
+				uprintf("failed getting interpreter from FD %d",
+					interp_fd);
+				goto ret;
+			}
+			error = __elfN(load_file)(imgp->proc, imgp->vp, &addr,
+			    &imgp->entry_addr, sv->sv_pagesize);
+			if (error == 0)
+				have_interp = TRUE;
+		}
 		if (brand_info->emul_path != NULL &&
 		    brand_info->emul_path[0] != '\0') {
 			path = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 			snprintf(path, MAXPATHLEN, "%s%s",
 			    brand_info->emul_path, interp);
-			error = __elfN(load_file)(imgp->proc, path, &addr,
+			error = __elfN(load_path)(imgp->proc, path, &addr,
 			    &imgp->entry_addr, sv->sv_pagesize);
 			free(path, M_TEMP);
 			if (error == 0)
@@ -1021,13 +1052,13 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		if (!have_interp && newinterp != NULL &&
 		    (brand_info->interp_path == NULL ||
 		    strcmp(interp, brand_info->interp_path) == 0)) {
-			error = __elfN(load_file)(imgp->proc, newinterp, &addr,
+			error = __elfN(load_path)(imgp->proc, newinterp, &addr,
 			    &imgp->entry_addr, sv->sv_pagesize);
 			if (error == 0)
 				have_interp = TRUE;
 		}
 		if (!have_interp) {
-			error = __elfN(load_file)(imgp->proc, interp, &addr,
+			error = __elfN(load_path)(imgp->proc, interp, &addr,
 			    &imgp->entry_addr, sv->sv_pagesize);
 		}
 		vn_lock(imgp->vp, LK_EXCLUSIVE | LK_RETRY);

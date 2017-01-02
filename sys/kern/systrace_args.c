@@ -3324,6 +3324,16 @@ systrace_args(int sysnum, void *params, uint64_t *uarg, int *n_args)
 		*n_args = 1;
 		break;
 	}
+	/* fldexec */
+	case 551: {
+		struct fldexec_args *p = params;
+		iarg[0] = p->interpreter; /* int */
+		iarg[1] = p->fd; /* int */
+		uarg[2] = (intptr_t) p->argv; /* char ** */
+		uarg[3] = (intptr_t) p->envv; /* char ** */
+		*n_args = 4;
+		break;
+	}
 	default:
 		*n_args = 0;
 		break;
@@ -8854,6 +8864,25 @@ systrace_entry_setargdesc(int sysnum, int ndx, char *desc, size_t descsz)
 			break;
 		};
 		break;
+	/* fldexec */
+	case 551:
+		switch(ndx) {
+		case 0:
+			p = "int";
+			break;
+		case 1:
+			p = "int";
+			break;
+		case 2:
+			p = "userland char **";
+			break;
+		case 3:
+			p = "userland char **";
+			break;
+		default:
+			break;
+		};
+		break;
 	default:
 		break;
 	};
@@ -10767,6 +10796,11 @@ systrace_return_setargdesc(int sysnum, int ndx, char *desc, size_t descsz)
 		break;
 	/* fdatasync */
 	case 550:
+		if (ndx == 0 || ndx == 1)
+			p = "int";
+		break;
+	/* fldexec */
+	case 551:
 		if (ndx == 0 || ndx == 1)
 			p = "int";
 		break;

@@ -241,7 +241,6 @@ sys_fexecve(struct thread *td, struct fexecve_args *uap)
 	error = exec_copyin_args(&args, NULL, UIO_SYSSPACE,
 	    uap->argv, uap->envv);
 	if (error == 0) {
-		args.interpreter = -1;
 		args.fd = uap->fd;
 		error = kern_execve(td, &args, NULL);
 	}
@@ -1197,6 +1196,11 @@ exec_copyin_args(struct image_args *args, char *fname,
 	bzero(args, sizeof(*args));
 	if (argv == NULL)
 		return (EFAULT);
+
+	/*
+	 * Don't override the imgact-specified interpreter by default.
+	 */
+	args->interpreter = -1;
 
 	/*
 	 * Allocate demand-paged memory for the file name, argument, and

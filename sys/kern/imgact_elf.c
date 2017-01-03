@@ -1033,6 +1033,12 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 					interp_fd);
 				goto ret;
 			}
+
+			error = vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
+			if (error) {
+				goto ret;
+			}
+
 			error = __elfN(load_file)(imgp->proc, imgp->vp, &addr,
 			    &imgp->entry_addr, sv->sv_pagesize);
 			if (error == 0)

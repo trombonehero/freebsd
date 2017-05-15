@@ -115,7 +115,7 @@ static void objlist_push_head(Objlist *, Obj_Entry *);
 static void objlist_push_tail(Objlist *, Obj_Entry *);
 static void objlist_put_after(Objlist *, Obj_Entry *, Obj_Entry *);
 static void objlist_remove(Objlist *, Obj_Entry *);
-static int parse_libdir(const char *);
+static int parse_integer(const char *);
 static void *path_enumerate(const char *, path_enum_proc, void *);
 static void release_object(Obj_Entry *);
 static int relocate_object_dag(Obj_Entry *root, bool bind_now,
@@ -343,6 +343,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     Objlist_Entry *entry;
     Obj_Entry *last_interposer, *obj, *preload_tail;
     const Elf_Phdr *phdr;
+    struct stat st;
     Objlist initlist;
     RtldLockState lockstate;
     Elf_Addr *argcp;
@@ -422,7 +423,14 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	    dbg("opening main program in direct exec mode");
 	    if (argc >= 2) {
 		argv0 = argv[1];
-		fd = open(argv0, O_RDONLY | O_CLOEXEC | O_VERIFY);
+		/*
+		 * Check whether argv[0] refers to a file descriptor that has
+		 * already been opened for us.
+		 */
+		fd = parse_integer(argv0);
+		if (fd == -1 || fstat(fd, &st) == -1 || !S_ISREG(st.st_mode))
+			/* argv[0] is not a descriptor, treat as a name */
+			fd = open(argv0, O_RDONLY | O_CLOEXEC | O_VERIFY);
 		if (fd == -1) {
 		    rtld_printf("Opening %s: %s\n", argv0,
 		      rtld_strerror(errno));
@@ -3033,7 +3041,7 @@ search_library_pathfds(const char *name, const char *path, int *fdp)
 	envcopy = xstrdup(path);
 	for (fdstr = strtok_r(envcopy, ":", &last_token); fdstr != NULL;
 	    fdstr = strtok_r(NULL, ":", &last_token)) {
-		dirfd = parse_libdir(fdstr);
+		dirfd = parse_integer(fdstr);
 		if (dirfd < 0)
 			break;
 		fd = __sys_openat(dirfd, name, O_RDONLY | O_CLOEXEC | O_VERIFY);
@@ -5236,29 +5244,27 @@ symlook_init_from_req(SymLook *dst, const SymLook *src)
  * Parse a file descriptor number without pulling in more of libc (e.g. atoi).
  */
 static int
-parse_libdir(const char *str)
+parse_integer(const char *str)
 {
 	static const int RADIX = 10;  /* XXXJA: possibly support hex? */
 	const char *orig;
-	int fd;
+	int n;
 	char c;
 
 	orig = str;
-	fd = 0;
+	n = 0;
 	for (c = *str; c != '\0'; c = *++str) {
 		if (c < '0' || c > '9')
 			return (-1);
 
-		fd *= RADIX;
-		fd += c - '0';
+		n *= RADIX;
+		n += c - '0';
 	}
 
 	/* Make sure we actually parsed something. */
-	if (str == orig) {
-		_rtld_error("failed to parse directory FD from '%s'", str);
+	if (str == orig)
 		return (-1);
-	}
-	return (fd);
+	return (n);
 }
 
 /*

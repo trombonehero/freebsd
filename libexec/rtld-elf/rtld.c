@@ -432,9 +432,8 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	    if (argc >= 2) {
 		rtld_argc = parse_args(argv, argc, &search_in_path, &fd);
 		argv0 = argv[rtld_argc];
-		if (fd == -1) {
+		if (fd == -1)
 			fd = open(argv0, O_RDONLY | O_CLOEXEC | O_VERIFY);
-		}
 		if (fd == -1) {
 		    rtld_printf("Opening %s: %s\n", argv0,
 		      rtld_strerror(errno));

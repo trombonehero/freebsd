@@ -3039,8 +3039,11 @@ search_library_pathfds(const char *name, const char *path, int *fdp)
 	for (fdstr = strtok_r(envcopy, ":", &last_token); fdstr != NULL;
 	    fdstr = strtok_r(NULL, ":", &last_token)) {
 		dirfd = parse_integer(fdstr);
-		if (dirfd < 0)
+		if (dirfd < 0) {
+			_rtld_error("failed to parse directory FD: '%s'",
+				fdstr);
 			break;
+		}
 		fd = __sys_openat(dirfd, name, O_RDONLY | O_CLOEXEC | O_VERIFY);
 		if (fd >= 0) {
 			*fdp = fd;

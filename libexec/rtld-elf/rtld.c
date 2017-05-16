@@ -115,8 +115,10 @@ static void objlist_push_head(Objlist *, Obj_Entry *);
 static void objlist_push_tail(Objlist *, Obj_Entry *);
 static void objlist_put_after(Objlist *, Obj_Entry *, Obj_Entry *);
 static void objlist_remove(Objlist *, Obj_Entry *);
+static int parse_args(char* argv[], int argc, bool *use_pathp, int *fdp);
 static int parse_integer(const char *);
 static void *path_enumerate(const char *, path_enum_proc, void *);
+static void print_usage(const char *argv0);
 static void release_object(Obj_Entry *);
 static int relocate_object_dag(Obj_Entry *root, bool bind_now,
     Obj_Entry *rtldobj, int flags, RtldLockState *lockstate);
@@ -343,15 +345,15 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     Objlist_Entry *entry;
     Obj_Entry *last_interposer, *obj, *preload_tail;
     const Elf_Phdr *phdr;
-    struct stat st;
     Objlist initlist;
     RtldLockState lockstate;
     Elf_Addr *argcp;
     char **argv, *argv0, **env, **envp, *kexecpath, *library_path_rpath;
     caddr_t imgentry;
     char buf[MAXPATHLEN];
-    int argc, fd, i, mib[2], phnum;
+    int argc, fd, i, mib[2], phnum, rtld_argc;
     size_t len;
+    bool search_in_path;
 
     /*
      * On entry, the dynamic linker itself has not been relocated yet.
@@ -422,15 +424,11 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	if (phdr == obj_rtld.phdr) {
 	    dbg("opening main program in direct exec mode");
 	    if (argc >= 2) {
-		argv0 = argv[1];
-		/*
-		 * Check whether argv[0] refers to a file descriptor that has
-		 * already been opened for us.
-		 */
-		fd = parse_integer(argv0);
-		if (fd == -1 || fstat(fd, &st) == -1 || !S_ISREG(st.st_mode))
-			/* argv[0] is not a descriptor, treat as a name */
+		rtld_argc = parse_args(argv, argc, &search_in_path, &fd);
+		argv0 = argv[rtld_argc];
+		if (fd == -1) {
 			fd = open(argv0, O_RDONLY | O_CLOEXEC | O_VERIFY);
+		}
 		if (fd == -1) {
 		    rtld_printf("Opening %s: %s\n", argv0,
 		      rtld_strerror(errno));
@@ -439,26 +437,25 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 
 		/*
 		 * For direct exec mode, argv[0] is the interpreter
-		 * name, we must remove it and shift arguments left by
-		 * 1 before invoking binary main.  Since stack layout
+		 * name, we must remove it and shift arguments left
+		 * before invoking binary main.  Since stack layout
 		 * places environment pointers and aux vectors right
 		 * after the terminating NULL, we must shift
 		 * environment and aux as well.
-		 * XXX Shift will be > 1 when options are implemented.
 		 */
 		do {
-		    *argv = *(argv + 1);
+		    *argv = *(argv + rtld_argc);
 		    argv++;
 		} while (*argv != NULL);
-		*argcp -= 1;
-		main_argc = argc - 1;
+		*argcp -= rtld_argc;
+		main_argc = argc - rtld_argc;
 		environ = env = envp = argv;
 		do {
-		    *envp = *(envp + 1);
+		    *envp = *(envp + rtld_argc);
 		    envp++;
 		} while (*envp != NULL);
 		aux = auxp = (Elf_Auxinfo *)envp;
-		auxpf = (Elf_Auxinfo *)(envp + 1);
+		auxpf = (Elf_Auxinfo *)(envp + rtld_argc);
 		for (;; auxp++, auxpf++) {
 		    *auxp = *auxpf;
 		    if (auxp->a_type == AT_NULL)
@@ -5241,6 +5238,92 @@ symlook_init_from_req(SymLook *dst, const SymLook *src)
 
 
 /*
+ * Parse a set of command-line arguments.
+ */
+static int parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
+{
+	struct stat st;
+	const char *arg;
+	int fd, i, j, arglen;
+	char opt;
+
+	dbg("Parsing command-line arguments");
+	*use_pathp = false;
+	*fdp = -1;
+
+	for (i = 1; i < argc; i++ ) {
+		arg = argv[i];
+		utrace(arg, strlen(arg));
+		dbg("argv[%d]: '%s'", i, arg);
+
+		/*
+		 * rtld arguments end with an explicit "--" or with the first
+		 * non-prefixed argument.
+		 */
+		if (strncmp(arg, "--", 3) == 0) {
+			i++;
+			break;
+		}
+		if (arg[0] != '-')
+			break;
+
+		/*
+		 * -fd XX can be used to specify a file descriptor for the
+		 * binary named at the command line (i.e., the later argument
+		 * will specify the process name but the descriptor is what will
+		 * actually be executed)
+		 */
+		if (strncmp(arg, "-fd", 4) == 0) {
+			i++;
+			fd = parse_integer(argv[i]);
+			if (fd == -1) {
+				_rtld_error("invalid file descriptor: '%s'",
+					argv[i]);
+				rtld_die();
+			}
+			if (fstat(fd, &st) == -1) {
+				_rtld_error("unable to stat FD %d", fd);
+				rtld_die();
+			}
+			if (!S_ISREG(st.st_mode)) {
+				_rtld_error("FD %d is not a file", fd);
+				rtld_die();
+			}
+			if ((st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0) {
+				_rtld_error("FD %d is not executable", fd);
+				rtld_die();
+			}
+
+			*fdp = fd;
+			continue;
+		}
+
+		/*
+		 * All other arguments are single-character options that can
+		 * be combined, so we need to search through `arg` for them.
+		 */
+		arglen = strnlen(arg, 10);
+		for (j = 1; j < arglen; j++) {
+			opt = arg[j];
+			if (opt == 'h') {
+				print_usage(argv[0]);
+				rtld_die();
+			/* TODO:
+			} else if (opt == 'p') {
+				*use_pathp = true;
+			*/
+			} else {
+				_rtld_error("Invalid options: '%s'", arg);
+				print_usage(argv[0]);
+				rtld_die();
+			}
+		}
+	}
+
+	return (i);
+}
+
+/*
  * Parse a file descriptor number without pulling in more of libc (e.g. atoi).
  */
 static int
@@ -5265,6 +5348,20 @@ parse_integer(const char *str)
 	if (str == orig)
 		return (-1);
 	return (n);
+}
+
+void print_usage(const char *argv0)
+{
+
+	_rtld_error("Usage: %s [-h] [-fd <FD>] [--] <binary> [<args>]\n"
+		"\n"
+		"Options:\n"
+		"  -h        Display this help message\n"
+		/* TODO: "  -p        Search in PATH for named binary\n" */
+		"  -fd <FD>  Execute <FD> instead of searching for <binary>\n"
+		"  --        End of RTLD options\n"
+		"  <binary>  Name of process to execute\n"
+		"  <args>    Arguments to the executed process\n", argv0);
 }
 
 /*

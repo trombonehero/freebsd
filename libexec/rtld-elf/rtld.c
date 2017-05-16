@@ -5243,7 +5243,8 @@ symlook_init_from_req(SymLook *dst, const SymLook *src)
 /*
  * Parse a set of command-line arguments.
  */
-static int parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
+static int
+parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 {
 	struct stat st;
 	const char *arg;

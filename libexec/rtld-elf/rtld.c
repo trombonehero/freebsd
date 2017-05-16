@@ -5256,7 +5256,6 @@ static int parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 
 	for (i = 1; i < argc; i++ ) {
 		arg = argv[i];
-		utrace(arg, strlen(arg));
 		dbg("argv[%d]: '%s'", i, arg);
 
 		/*

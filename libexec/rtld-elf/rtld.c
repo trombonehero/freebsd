@@ -440,8 +440,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 		    rtld_die();
 		}
 		if (fstat(fd, &st) == -1) {
-		    rtld_printf("Stat %s: %s\n", argv0,
-		      rtld_strerror(errno));
+		    _rtld_error("failed to fstat FD %d for %s", fd, argv0);
 		    rtld_die();
 		}
 
@@ -5280,7 +5279,6 @@ symlook_init_from_req(SymLook *dst, const SymLook *src)
 static int
 parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 {
-	struct stat st;
 	const char *arg;
 	int fd, i, j, arglen;
 	char opt;
@@ -5335,10 +5333,6 @@ parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 				if (fd == -1) {
 					_rtld_error("invalid descriptor: '%s'",
 						argv[i]);
-					rtld_die();
-				}
-				if (fstat(fd, &st) == -1) {
-					_rtld_error("unable to stat FD %d", fd);
 					rtld_die();
 				}
 				*fdp = fd;

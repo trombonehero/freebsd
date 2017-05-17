@@ -5297,7 +5297,7 @@ parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 		 * rtld arguments end with an explicit "--" or with the first
 		 * non-prefixed argument.
 		 */
-		if (strncmp(arg, "--", 3) == 0) {
+		if (strcmp(arg, "--") == 0) {
 			i++;
 			break;
 		}
@@ -5305,41 +5305,44 @@ parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 			break;
 
 		/*
-		 * -fd XX can be used to specify a file descriptor for the
-		 * binary named at the command line (i.e., the later argument
-		 * will specify the process name but the descriptor is what will
-		 * actually be executed)
-		 */
-		if (strncmp(arg, "-fd", 4) == 0) {
-			i++;
-			fd = parse_integer(argv[i]);
-			if (fd == -1) {
-				_rtld_error("invalid file descriptor: '%s'",
-					argv[i]);
-				rtld_die();
-			}
-			if (fstat(fd, &st) == -1) {
-				_rtld_error("unable to stat FD %d", fd);
-				rtld_die();
-			}
-			if (!S_ISREG(st.st_mode)) {
-				_rtld_error("FD %d is not a file", fd);
-				rtld_die();
-			}
-			*fdp = fd;
-			continue;
-		}
-
-		/*
 		 * All other arguments are single-character options that can
 		 * be combined, so we need to search through `arg` for them.
 		 */
-		arglen = strnlen(arg, 10);
+		arglen = strlen(arg);
 		for (j = 1; j < arglen; j++) {
 			opt = arg[j];
 			if (opt == 'h') {
 				print_usage(argv[0]);
 				rtld_die();
+			} else if (opt == 'f') {
+				/*
+				 * -f XX can be used to specify a descriptor
+				 * for the binary named at the command line
+				 * (i.e., the later argument will specify the
+				 * process name but the descriptor is what will
+				 * actually be executed)
+				 */
+				if (j != (arglen - 1)) {
+					/*
+					 * -f must be the last option in,
+					 *  e.g., -abcf
+					 */
+					_rtld_error("invalid options: %s", arg);
+					rtld_die();
+				}
+				i++;
+				fd = parse_integer(argv[i]);
+				if (fd == -1) {
+					_rtld_error("invalid descriptor: '%s'",
+						argv[i]);
+					rtld_die();
+				}
+				if (fstat(fd, &st) == -1) {
+					_rtld_error("unable to stat FD %d", fd);
+					rtld_die();
+				}
+				*fdp = fd;
+				break;
 			/* TODO:
 			} else if (opt == 'p') {
 				*use_pathp = true;
@@ -5385,12 +5388,12 @@ parse_integer(const char *str)
 void print_usage(const char *argv0)
 {
 
-	_rtld_error("Usage: %s [-h] [-fd <FD>] [--] <binary> [<args>]\n"
+	_rtld_error("Usage: %s [-h] [-f <FD>] [--] <binary> [<args>]\n"
 		"\n"
 		"Options:\n"
 		"  -h        Display this help message\n"
 		/* TODO: "  -p        Search in PATH for named binary\n" */
-		"  -fd <FD>  Execute <FD> instead of searching for <binary>\n"
+		"  -f <FD>  Execute <FD> instead of searching for <binary>\n"
 		"  --        End of RTLD options\n"
 		"  <binary>  Name of process to execute\n"
 		"  <args>    Arguments to the executed process\n", argv0);

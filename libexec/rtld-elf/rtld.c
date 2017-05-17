@@ -479,13 +479,11 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 		 * after the terminating NULL, we must shift
 		 * environment and aux as well.
 		 */
-		do {
-		    *argv = *(argv + rtld_argc);
-		    argv++;
-		} while (*argv != NULL);
-		*argcp -= rtld_argc;
 		main_argc = argc - rtld_argc;
-		environ = env = envp = argv;
+		for (i = 0; i <= main_argc; i++)
+		    argv[i] = argv[i + rtld_argc];
+		*argcp -= rtld_argc;
+		environ = env = envp = argv + main_argc + 1;
 		do {
 		    *envp = *(envp + rtld_argc);
 		    envp++;

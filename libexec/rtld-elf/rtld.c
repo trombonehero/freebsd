@@ -5322,7 +5322,7 @@ parse_args(char* argv[], int argc, bool *use_pathp, int *fdp)
 				 * process name but the descriptor is what will
 				 * actually be executed)
 				 */
-				if (j != (arglen - 1)) {
+				if (j != arglen - 1) {
 					/*
 					 * -f must be the last option in,
 					 *  e.g., -abcf

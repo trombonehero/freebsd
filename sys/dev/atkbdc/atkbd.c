@@ -161,7 +161,6 @@ atkbd_timeout(void *arg)
 {
 	atkbd_state_t *state;
 	keyboard_t *kbd;
-	int s;
 
 	/*
 	 * The original text of the following comments are extracted 
@@ -188,19 +187,9 @@ atkbd_timeout(void *arg)
 	 *
 	 * The keyboard apparently unwedges the irq in most cases.
 	 */
-	s = spltty();
 	kbd = (keyboard_t *)arg;
-	if (kbdd_lock(kbd, TRUE)) {
-		/*
-		 * We have seen the lock flag is not set. Let's reset
-		 * the flag early, otherwise the LED update routine fails
-		 * which may want the lock during the interrupt routine.
-		 */
-		kbdd_lock(kbd, FALSE);
-		if (kbdd_check_char(kbd))
-			kbdd_intr(kbd, NULL);
-	}
-	splx(s);
+	if (kbdd_check_char(kbd))
+		kbdd_intr(kbd, NULL);
 	state = (atkbd_state_t *)kbd->kb_data;
 	callout_reset(&state->ks_timer, hz / 10, atkbd_timeout, arg);
 }
@@ -572,16 +561,15 @@ static int
 atkbd_test_if(keyboard_t *kbd)
 {
 	int error;
-	int s;
 
 	error = 0;
+	kbdc_lock(((atkbd_state_t *)kbd->kb_data)->kbdc);
 	empty_both_buffers(((atkbd_state_t *)kbd->kb_data)->kbdc, 10);
-	s = spltty();
 	if (!test_controller(((atkbd_state_t *)kbd->kb_data)->kbdc))
 		error = EIO;
 	else if (test_kbd_port(((atkbd_state_t *)kbd->kb_data)->kbdc) != 0)
 		error = EIO;
-	splx(s);
+	kbdc_unlock(((atkbd_state_t *)kbd->kb_data)->kbdc);
 
 	return error;
 }
@@ -619,10 +607,12 @@ atkbd_read(keyboard_t *kbd, int wait)
 {
 	int c;
 
+	kbdc_lock(((atkbd_state_t *)kbd->kb_data)->kbdc);
 	if (wait)
 		c = read_kbd_data(((atkbd_state_t *)kbd->kb_data)->kbdc);
 	else
 		c = read_kbd_data_no_wait(((atkbd_state_t *)kbd->kb_data)->kbdc);
+	kbdc_unlock(((atkbd_state_t *)kbd->kb_data)->kbdc);
 	if (c != -1)
 		++kbd->kb_count;
 	return (KBD_IS_ACTIVE(kbd) ? c : -1);
@@ -658,15 +648,19 @@ next_code:
 	}
 
 	/* see if there is something in the keyboard port */
+	kbdc_lock(state->kbdc);
 	if (wait) {
 		do {
 			scancode = read_kbd_data(state->kbdc);
 		} while (scancode == -1);
 	} else {
 		scancode = read_kbd_data_no_wait(state->kbdc);
-		if (scancode == -1)
+		if (scancode == -1) {
+			kbdc_unlock(state->kbdc);
 			return NOKEY;
+		}
 	}
+	kbdc_unlock(state->kbdc);
 	++kbd->kb_count;
 
 #if KBDIO_DEBUG >= 10
@@ -1086,7 +1080,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 static int
 atkbd_lock(keyboard_t *kbd, int lock)
 {
-	return kbdc_lock(((atkbd_state_t *)kbd->kb_data)->kbdc, lock);
+	return (1);
 }
 
 /* clear the internal state of the keyboard */
@@ -1163,17 +1157,21 @@ atkbd_shutdown_final(void *v)
 	 * disabling the interrupts doesn't cause real problems but the
 	 * responsiveness is a bit better when they are turned off.
 	 */
+	kbdc_lock(kbdc);
 	send_kbd_command(kbdc, KBDC_DISABLE_KBD);
 	set_controller_command_byte(kbdc,
 	    KBD_AUX_CONTROL_BITS | KBD_KBD_CONTROL_BITS | KBD_TRANSLATION,
 	    KBD_DISABLE_AUX_PORT | KBD_DISABLE_KBD_INT | KBD_ENABLE_KBD_PORT);
 	send_kbd_command(kbdc, KBDC_ENABLE_KBD);
+	kbdc_unlock(kbdc);
 #endif
 }
 
 static int
 atkbd_reset(KBDC kbdc, int flags, int c)
 {
+	kbdc_lock_assert(kbdc);
+
 	/* reset keyboard hardware */
 	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
 		/*
@@ -1225,6 +1223,8 @@ set_typematic(keyboard_t *kbd)
 static int
 setup_kbd_port(KBDC kbdc, int port, int intr)
 {
+	kbdc_lock_assert(kbdc);
+
 	if (!set_controller_command_byte(kbdc,
 		KBD_KBD_CONTROL_BITS,
 		((port) ? KBD_ENABLE_KBD_PORT : KBD_DISABLE_KBD_PORT)
@@ -1236,6 +1236,8 @@ setup_kbd_port(KBDC kbdc, int port, int intr)
 static int
 get_kbd_echo(KBDC kbdc)
 {
+	kbdc_lock_assert(kbdc);
+
 	/* enable the keyboard port, but disable the keyboard intr. */
 	if (setup_kbd_port(kbdc, TRUE, FALSE))
 		/* CONTROLLER ERROR: there is very little we can do... */
@@ -1273,10 +1275,7 @@ probe_keyboard(KBDC kbdc, int flags)
 	int c;
 	int m;
 
-	if (!kbdc_lock(kbdc, TRUE)) {
-		/* driver error? */
-		return ENXIO;
-	}
+	kbdc_lock(kbdc);
 
 	/* temporarily block data transmission from the keyboard */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
@@ -1290,7 +1289,7 @@ probe_keyboard(KBDC kbdc, int flags)
 	if (c == -1) {
 		/* CONTROLLER ERROR */
 		kbdc_set_device_mask(kbdc, m);
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		return ENXIO;
 	}
 
@@ -1327,7 +1326,7 @@ probe_keyboard(KBDC kbdc, int flags)
 	}
 #endif
 
-	kbdc_lock(kbdc, FALSE);
+	kbdc_unlock(kbdc);
 	return (HAS_QUIRK(kbdc, KBDC_QUIRK_IGNORE_PROBE_RESULT) ? 0 : err);
 }
 
@@ -1338,10 +1337,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	int id;
 	int c;
 
-	if (!kbdc_lock(kbdc, TRUE)) {
-		/* driver error? */
-		return EIO;
-	}
+	kbdc_lock(kbdc);
 
 	/* temporarily block data transmission from the keyboard */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
@@ -1351,7 +1347,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	c = get_controller_command_byte(kbdc);
 	if (c == -1) {
 		/* CONTROLLER ERROR */
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		printf("atkbd: unable to get the current command byte value.\n");
 		return EIO;
 	}
@@ -1367,13 +1363,13 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	if (setup_kbd_port(kbdc, TRUE, FALSE)) {
 		/* CONTROLLER ERROR: there is very little we can do... */
 		printf("atkbd: unable to set the command byte.\n");
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		return EIO;
 	}
 
 	if (HAS_QUIRK(kbdc, KBDC_QUIRK_RESET_AFTER_PROBE) &&
 	    atkbd_reset(kbdc, flags, c)) {
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		return EIO;
 	}
 
@@ -1423,7 +1419,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 
 	if (!HAS_QUIRK(kbdc, KBDC_QUIRK_RESET_AFTER_PROBE) &&
 	    atkbd_reset(kbdc, flags, c)) {
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		return EIO;
 	}
 
@@ -1445,7 +1441,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			 */
 			set_controller_command_byte(kbdc, ALLOW_DISABLE_KBD(kbdc)
 			    ? 0xff : KBD_KBD_CONTROL_BITS, c);
-			kbdc_lock(kbdc, FALSE);
+			kbdc_unlock(kbdc);
 			printf("atkbd: unable to set the XT keyboard mode.\n");
 			return EIO;
 		}
@@ -1483,26 +1479,20 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		set_controller_command_byte(kbdc, ALLOW_DISABLE_KBD(kbdc)
 		    ? 0xff : (KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
 			KBD_OVERRIDE_KBD_LOCK), c);
-		kbdc_lock(kbdc, FALSE);
+		kbdc_unlock(kbdc);
 		printf("atkbd: unable to enable the keyboard port and intr.\n");
 		return EIO;
 	}
 
-	kbdc_lock(kbdc, FALSE);
+	kbdc_unlock(kbdc);
 	return 0;
 }
 
 static int
 write_kbd(KBDC kbdc, int command, int data)
 {
-	int s;
-
 	/* prevent the timeout routine from polling the keyboard */
-	if (!kbdc_lock(kbdc, TRUE)) 
-		return EBUSY;
-
-	/* disable the keyboard and mouse interrupt */
-	s = spltty();
+	kbdc_lock(kbdc);
 #if 0
 	c = get_controller_command_byte(kbdc);
 	if ((c == -1) 
@@ -1511,18 +1501,9 @@ write_kbd(KBDC kbdc, int command, int data)
 		KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT
 		| KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR */
-		kbdc_lock(kbdc, FALSE);
-		splx(s);
+		kbdc_unlock(kbdc);
 		return EIO;
 	}
-	/* 
-	 * Now that the keyboard controller is told not to generate 
-	 * the keyboard and mouse interrupts, call `splx()' to allow 
-	 * the other tty interrupts. The clock interrupt may also occur, 
-	 * but the timeout routine (`scrn_timer()') will be blocked 
-	 * by the lock flag set via `kbdc_lock()'
-	 */
-	splx(s);
 #endif
 	if (send_kbd_command_and_data(kbdc, command, data) != KBD_ACK)
 		send_kbd_command(kbdc, KBDC_ENABLE_KBD);
@@ -1532,10 +1513,8 @@ write_kbd(KBDC kbdc, int command, int data)
 	    c & (KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS))) { 
 		/* CONTROLLER ERROR */
 	}
-#else
-	splx(s);
 #endif
-	kbdc_lock(kbdc, FALSE);
+	kbdc_unlock(kbdc);
 
 	return 0;
 }
@@ -1544,6 +1523,8 @@ static int
 get_kbd_id(KBDC kbdc)
 {
 	int id1, id2;
+
+	kbdc_lock_assert(kbdc);
 
 	empty_both_buffers(kbdc, 10);
 	id1 = id2 = -1;

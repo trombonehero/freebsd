@@ -198,7 +198,7 @@ typedef struct atkbdc_softc {
     bus_space_handle_t ioh1;
     int command_byte;		/* current command byte value */
     int command_mask;		/* command byte mask bits for kbd/aux devices */
-    int lock;			/* FIXME: XXX not quite a semaphore... */
+    struct mtx lock;
     kqueue kbd;			/* keyboard data queue */
     kqueue aux;			/* auxiliary data queue */
     int retry;
@@ -221,6 +221,28 @@ typedef caddr_t KBDC;
 #define KBDC_RID_KBD	0
 #define KBDC_RID_AUX	1
 
+/* inlined functions */
+static __inline void
+kbdc_lock(KBDC kbdc)
+{
+
+    mtx_lock(&((atkbdc_softc_t *)kbdc)->lock);
+}
+
+static __inline void
+kbdc_unlock(KBDC kbdc)
+{
+
+    mtx_unlock(&((atkbdc_softc_t *)kbdc)->lock);
+}
+
+static __inline void
+kbdc_lock_assert(KBDC kbdc)
+{
+
+    mtx_assert(&((atkbdc_softc_t *)kbdc)->lock, MA_OWNED);
+}
+
 /* function prototypes */
 
 atkbdc_softc_t *atkbdc_get_softc(int unit);
@@ -230,7 +252,6 @@ int atkbdc_attach_unit(int unit, atkbdc_softc_t *sc, struct resource *port0,
 int atkbdc_configure(void);
 
 KBDC atkbdc_open(int unit);
-int kbdc_lock(KBDC kbdc, int lock);
 int kbdc_data_ready(KBDC kbdc);
 
 int write_controller_command(KBDC kbdc,int c);

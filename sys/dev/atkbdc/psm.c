@@ -91,7 +91,7 @@ __FBSDID("$FreeBSD$");
 #include <isa/isavar.h>
 #endif
 
-#ifdef EVDEV
+#ifdef EVDEV_SUPPORT
 #include <dev/evdev/evdev.h>
 #include <dev/evdev/input.h>
 #endif
@@ -331,8 +331,10 @@ typedef struct elantechhw {
 #define	ELANTECH_REG_RDWR	0x00
 #define	ELANTECH_CUSTOM_CMD	0xf8
 
-#define	ELANTECH_MAX_FINGERS	PSM_FINGERS
+#define	ELANTECH_MAX_FINGERS	5
 
+#define	ELANTECH_FINGER_MAX_P	255
+#define	ELANTECH_FINGER_MAX_W	15
 #define	ELANTECH_FINGER_SET_XYP(pb) (finger_t) {			\
     .x = (((pb)->ipacket[1] & 0x0f) << 8) | (pb)->ipacket[2],		\
     .y = (((pb)->ipacket[4] & 0x0f) << 8) | (pb)->ipacket[5],		\
@@ -379,6 +381,7 @@ typedef struct elantechaction {
 /* driver control block */
 struct psm_softc {		/* Driver status information */
 	int		unit;
+	struct mtx	mtx;		/* Driver's mutex */
 	struct selinfo	rsel;		/* Process selecting for Input */
 	u_char		state;		/* Mouse driver state */
 	int		config;		/* driver configuration flags */
@@ -424,8 +427,9 @@ struct psm_softc {		/* Driver status information */
 	int		cmdcount;
 	struct sigio	*async;		/* Processes waiting for SIGIO */
 	int		extended_buttons;
-#ifdef	EVDEV
-	struct evdev_dev *evdev;
+#ifdef	EVDEV_SUPPORT
+	struct evdev_dev *evdev_a;	/* Absolute reporting device */
+	struct evdev_dev *evdev_r;	/* Relative reporting device */
 #endif
 };
 static devclass_t psm_devclass;
@@ -436,7 +440,8 @@ static devclass_t psm_devclass;
 #define	PSM_ASLP		2	/* Waiting for mouse data */
 #define	PSM_SOFTARMED		4	/* Software interrupt armed */
 #define	PSM_NEED_SYNCBITS	8	/* Set syncbits using next data pkt */
-#define	PSM_EV_OPEN		16
+#define	PSM_EV_OPEN_R		0x10	/* Relative evdev device is open */
+#define	PSM_EV_OPEN_A		0x20	/* Relative evdev device is open */
 
 /* driver configuration flags (config) */
 #define	PSM_CONFIG_RESOLUTION	0x000f	/* resolution */
@@ -552,9 +557,11 @@ static d_poll_t		psmpoll;
 static int	psmopen(struct psm_softc *);
 static int	psmclose(struct psm_softc *);
 
-#ifdef EVDEV
-static evdev_open_t	psm_ev_open;
-static evdev_close_t	psm_ev_close;
+#ifdef EVDEV_SUPPORT
+static evdev_open_t	psm_ev_open_r;
+static evdev_close_t	psm_ev_close_r;
+static evdev_open_t	psm_ev_open_a;
+static evdev_close_t	psm_ev_close_a;
 #endif
 
 static int	enable_aux_dev(KBDC);
@@ -573,8 +580,12 @@ static int	doinitialize(struct psm_softc *, mousemode_t *);
 static int	doopen(struct psm_softc *, int);
 static int	reinitialize(struct psm_softc *, int);
 static char	*model_name(int);
+static void	psm_lock(struct psm_softc *);
+static void	psm_unlock(struct psm_softc *);
+static void	psm_lock_assert(struct psm_softc *);
 static void	psmsoftintr(void *);
 static void	psmsoftintridle(void *);
+static void	psmintr_locked(void *);
 static void	psmintr(void *);
 static void	psmtimeout(void *);
 static int	timeelapsed(const struct timeval *, int, int,
@@ -685,7 +696,6 @@ static driver_t psm_driver = {
 
 static struct cdevsw psm_cdevsw = {
 	.d_version =	D_VERSION,
-	.d_flags =	D_NEEDGIANT,
 	.d_open =	psm_cdev_open,
 	.d_close =	psm_cdev_close,
 	.d_read =	psmread,
@@ -695,10 +705,14 @@ static struct cdevsw psm_cdevsw = {
 	.d_name =	PSM_DRIVER_NAME,
 };
 
-#ifdef EVDEV
-static struct evdev_methods psm_ev_methods = {
-	.ev_open = &psm_ev_open,
-	.ev_close = &psm_ev_close,
+#ifdef EVDEV_SUPPORT
+static struct evdev_methods psm_ev_methods_r = {
+	.ev_open = &psm_ev_open_r,
+	.ev_close = &psm_ev_close_r,
+};
+static struct evdev_methods psm_ev_methods_a = {
+	.ev_open = &psm_ev_open_a,
+	.ev_close = &psm_ev_close_a,
 };
 #endif
 
@@ -707,6 +721,8 @@ static int
 enable_aux_dev(KBDC kbdc)
 {
 	int res;
+
+	kbdc_lock_assert(kbdc);
 
 	res = send_aux_command(kbdc, PSMC_ENABLE_DEV);
 	VLOG(2, (LOG_DEBUG, "psm: ENABLE_DEV return code:%04x\n", res));
@@ -718,6 +734,8 @@ static int
 disable_aux_dev(KBDC kbdc)
 {
 	int res;
+
+	kbdc_lock_assert(kbdc);
 
 	res = send_aux_command(kbdc, PSMC_DISABLE_DEV);
 	VLOG(2, (LOG_DEBUG, "psm: DISABLE_DEV return code:%04x\n", res));
@@ -731,6 +749,8 @@ get_mouse_status(KBDC kbdc, int *status, int flag, int len)
 	int cmd;
 	int res;
 	int i;
+
+	kbdc_lock_assert(kbdc);
 
 	switch (flag) {
 	case 0:
@@ -766,6 +786,8 @@ get_aux_id(KBDC kbdc)
 	int res;
 	int id;
 
+	kbdc_lock_assert(kbdc);
+
 	empty_aux_buffer(kbdc, 5);
 	res = send_aux_command(kbdc, PSMC_SEND_DEV_ID);
 	VLOG(2, (LOG_DEBUG, "psm: SEND_DEV_ID return code:%04x\n", res));
@@ -786,6 +808,8 @@ set_mouse_sampling_rate(KBDC kbdc, int rate)
 {
 	int res;
 
+	kbdc_lock_assert(kbdc);
+
 	res = send_aux_command_and_data(kbdc, PSMC_SET_SAMPLING_RATE, rate);
 	VLOG(2, (LOG_DEBUG, "psm: SET_SAMPLING_RATE (%d) %04x\n", rate, res));
 
@@ -796,6 +820,8 @@ static int
 set_mouse_scaling(KBDC kbdc, int scale)
 {
 	int res;
+
+	kbdc_lock_assert(kbdc);
 
 	switch (scale) {
 	case 1:
@@ -819,6 +845,8 @@ set_mouse_resolution(KBDC kbdc, int val)
 {
 	int res;
 
+	kbdc_lock_assert(kbdc);
+
 	res = send_aux_command_and_data(kbdc, PSMC_SET_RESOLUTION, val);
 	VLOG(2, (LOG_DEBUG, "psm: SET_RESOLUTION (%d) %04x\n", val, res));
 
@@ -834,6 +862,8 @@ set_mouse_mode(KBDC kbdc)
 {
 	int res;
 
+	kbdc_lock_assert(kbdc);
+
 	res = send_aux_command(kbdc, PSMC_SET_STREAM_MODE);
 	VLOG(2, (LOG_DEBUG, "psm: SET_STREAM_MODE return code:%04x\n", res));
 
@@ -845,6 +875,8 @@ get_mouse_buttons(KBDC kbdc)
 {
 	int c = 2;		/* assume two buttons by default */
 	int status[3];
+
+	kbdc_lock_assert(kbdc);
 
 	/*
 	 * NOTE: a special sequence to obtain Logitech Mouse specific
@@ -923,6 +955,8 @@ model_name(int model)
 static void
 recover_from_error(KBDC kbdc)
 {
+	kbdc_lock_assert(kbdc);
+
 	/* discard anything left in the output buffer */
 	empty_both_buffers(kbdc, 10);
 
@@ -948,6 +982,8 @@ recover_from_error(KBDC kbdc)
 static int
 restore_controller(KBDC kbdc, int command_byte)
 {
+	kbdc_lock_assert(kbdc);
+
 	empty_both_buffers(kbdc, 10);
 
 	if (!set_controller_command_byte(kbdc, 0xff, command_byte)) {
@@ -974,6 +1010,8 @@ doinitialize(struct psm_softc *sc, mousemode_t *mode)
 	KBDC kbdc = sc->kbdc;
 	int stat[3];
 	int i;
+
+	kbdc_lock_assert(kbdc);
 
 	switch((i = test_aux_port(kbdc))) {
 	case 1:	/* ignore these errors */
@@ -1057,6 +1095,9 @@ static int
 doopen(struct psm_softc *sc, int command_byte)
 {
 	int stat[3];
+
+	psm_lock_assert(sc);
+	kbdc_lock_assert(sc->kbdc);
 
 	/*
 	 * FIXME: Synaptics TouchPad seems to go back to Relative Mode with
@@ -1160,12 +1201,11 @@ reinitialize(struct psm_softc *sc, int doinit)
 {
 	int err;
 	int c;
-	int s;
+
+	psm_lock_assert(sc);
 
 	/* don't let anybody mess with the aux device */
-	if (!kbdc_lock(sc->kbdc, TRUE))
-		return (EIO);
-	s = spltty();
+	kbdc_lock(sc->kbdc);
 
 	/* block our watchdog timer */
 	sc->watchdog = FALSE;
@@ -1184,8 +1224,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
 	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR */
-		splx(s);
-		kbdc_lock(sc->kbdc, FALSE);
+		kbdc_unlock(sc->kbdc);
 		log(LOG_ERR,
 		    "psm%d: unable to set the command byte (reinitialize).\n",
 		    sc->unit);
@@ -1219,10 +1258,10 @@ reinitialize(struct psm_softc *sc, int doinit)
 			err = ENXIO;
 		}
 	}
-	splx(s);
 
 	/* restore the driver state */
-	if ((sc->state & (PSM_OPEN | PSM_EV_OPEN)) && (err == 0)) {
+	if ((sc->state & (PSM_OPEN | PSM_EV_OPEN_R | PSM_EV_OPEN_A)) &&
+	    (err == 0)) {
 		/* enable the aux device and the port again */
 		err = doopen(sc, c);
 		if (err != 0)
@@ -1241,8 +1280,29 @@ reinitialize(struct psm_softc *sc, int doinit)
 		}
 	}
 
-	kbdc_lock(sc->kbdc, FALSE);
+	kbdc_unlock(sc->kbdc);
 	return (err);
+}
+
+static void
+psm_lock(struct psm_softc *sc)
+{
+
+	mtx_lock(&sc->mtx);
+}
+
+static void
+psm_unlock(struct psm_softc *sc)
+{
+
+	mtx_unlock(&sc->mtx);
+}
+
+static void
+psm_lock_assert(struct psm_softc *sc)
+{
+
+	mtx_assert(&sc->mtx, MA_OWNED);
 }
 
 /* psm driver entry points */
@@ -1286,7 +1346,7 @@ psmidentify(driver_t *driver, device_t parent)
 	if (bootverbose)			\
 		--verbose;			\
 	kbdc_set_device_mask(sc->kbdc, mask);	\
-	kbdc_lock(sc->kbdc, FALSE);		\
+	kbdc_unlock(sc->kbdc);			\
 	return (v);				\
 } while (0)
 
@@ -1333,12 +1393,7 @@ psmprobe(device_t dev)
 
 	device_set_desc(dev, "PS/2 Mouse");
 
-	if (!kbdc_lock(sc->kbdc, TRUE)) {
-		printf("psm%d: unable to lock the controller.\n", unit);
-		if (bootverbose)
-			--verbose;
-		return (ENXIO);
-	}
+	kbdc_lock(sc->kbdc);
 
 	/*
 	 * NOTE: two bits in the command byte controls the operation of the
@@ -1599,9 +1654,273 @@ psmprobe(device_t dev)
 
 	/* done */
 	kbdc_set_device_mask(sc->kbdc, mask | KBD_AUX_CONTROL_BITS);
-	kbdc_lock(sc->kbdc, FALSE);
+	kbdc_unlock(sc->kbdc);
 	return (0);
 }
+
+#ifdef EVDEV_SUPPORT
+/* Values are taken from Linux drivers for userland software compatibility */
+#define	PS2_MOUSE_VENDOR		0x0002
+#define	PS2_MOUSE_GENERIC_PRODUCT	0x0001
+#define	PS2_MOUSE_SYNAPTICS_NAME	"SynPS/2 Synaptics TouchPad"
+#define	PS2_MOUSE_SYNAPTICS_PRODUCT	0x0007
+#define	PS2_MOUSE_TRACKPOINT_NAME	"TPPS/2 IBM TrackPoint"
+#define	PS2_MOUSE_TRACKPOINT_PRODUCT	0x000A
+#define	PS2_MOUSE_ELANTECH_NAME		"ETPS/2 Elantech Touchpad"
+#define	PS2_MOUSE_ELANTECH_ST_NAME	"ETPS/2 Elantech TrackPoint"
+#define	PS2_MOUSE_ELANTECH_PRODUCT	0x000E
+
+#define	ABSINFO_END	{ ABS_CNT, 0, 0, 0 }
+
+static void
+psm_support_abs_bulk(struct evdev_dev *evdev, const uint16_t info[][4])
+{
+	size_t i;
+
+	for (i = 0; info[i][0] != ABS_CNT; i++)
+		evdev_support_abs(evdev, info[i][0], 0, info[i][1], info[i][2],
+		    0, 0, info[i][3]);
+}
+
+static void
+psm_push_mt_finger(struct psm_softc *sc, int id, const finger_t *f)
+{
+	int y = sc->synhw.minimumYCoord + sc->synhw.maximumYCoord - f->y;
+
+	evdev_push_abs(sc->evdev_a, ABS_MT_SLOT, id);
+	evdev_push_abs(sc->evdev_a, ABS_MT_TRACKING_ID, id);
+	evdev_push_abs(sc->evdev_a, ABS_MT_POSITION_X, f->x);
+	evdev_push_abs(sc->evdev_a, ABS_MT_POSITION_Y, y);
+	evdev_push_abs(sc->evdev_a, ABS_MT_PRESSURE, f->p);
+}
+
+static void
+psm_push_st_finger(struct psm_softc *sc, const finger_t *f)
+{
+	int y = sc->synhw.minimumYCoord + sc->synhw.maximumYCoord - f->y;
+
+	evdev_push_abs(sc->evdev_a, ABS_X, f->x);
+	evdev_push_abs(sc->evdev_a, ABS_Y, y);
+	evdev_push_abs(sc->evdev_a, ABS_PRESSURE, f->p);
+	if (sc->synhw.capPalmDetect)
+		evdev_push_abs(sc->evdev_a, ABS_TOOL_WIDTH, f->w);
+}
+
+static void
+psm_release_mt_slot(struct evdev_dev *evdev, int32_t slot)
+{
+
+	evdev_push_abs(evdev, ABS_MT_SLOT, slot);
+	evdev_push_abs(evdev, ABS_MT_TRACKING_ID, -1);
+}
+
+static int
+psm_register(device_t dev, int model_code)
+{
+	struct psm_softc *sc = device_get_softc(dev);
+	struct evdev_dev *evdev_r;
+	int error, i, nbuttons, nwheels, product;
+	bool is_pointing_stick;
+	const char *name;
+
+	name = model_name(model_code);
+	nbuttons = sc->hw.buttons;
+	product = PS2_MOUSE_GENERIC_PRODUCT;
+	nwheels = 0;
+	is_pointing_stick = false;
+
+	switch (model_code) {
+	case MOUSE_MODEL_TRACKPOINT:
+		name = PS2_MOUSE_TRACKPOINT_NAME;
+		product = PS2_MOUSE_TRACKPOINT_PRODUCT;
+		nbuttons = 3;
+		is_pointing_stick = true;
+		break;
+
+	case MOUSE_MODEL_ELANTECH:
+		name = PS2_MOUSE_ELANTECH_ST_NAME;
+		product = PS2_MOUSE_ELANTECH_PRODUCT;
+		nbuttons = 3;
+		is_pointing_stick = true;
+		break;
+
+	case MOUSE_MODEL_MOUSEMANPLUS:
+	case MOUSE_MODEL_4D:
+		nwheels = 2;
+		break;
+
+	case MOUSE_MODEL_EXPLORER:
+	case MOUSE_MODEL_INTELLI:
+	case MOUSE_MODEL_NET:
+	case MOUSE_MODEL_NETSCROLL:
+	case MOUSE_MODEL_4DPLUS:
+		nwheels = 1;
+		break;
+	}
+
+	evdev_r = evdev_alloc();
+	evdev_set_name(evdev_r, name);
+	evdev_set_phys(evdev_r, device_get_nameunit(dev));
+	evdev_set_id(evdev_r, BUS_I8042, PS2_MOUSE_VENDOR, product, 0);
+	evdev_set_methods(evdev_r, sc, &psm_ev_methods_r);
+
+	evdev_support_prop(evdev_r, INPUT_PROP_POINTER);
+	if (is_pointing_stick)
+		evdev_support_prop(evdev_r, INPUT_PROP_POINTING_STICK);
+	evdev_support_event(evdev_r, EV_SYN);
+	evdev_support_event(evdev_r, EV_KEY);
+	evdev_support_event(evdev_r, EV_REL);
+	evdev_support_rel(evdev_r, REL_X);
+	evdev_support_rel(evdev_r, REL_Y);
+	switch (nwheels) {
+	case 2:
+		evdev_support_rel(evdev_r, REL_HWHEEL);
+		/* FALLTHROUGH */
+	case 1:
+		evdev_support_rel(evdev_r, REL_WHEEL);
+	}
+	for (i = 0; i < nbuttons; i++)
+		evdev_support_key(evdev_r, BTN_MOUSE + i);
+
+	error = evdev_register_mtx(evdev_r, &sc->mtx);
+	if (error)
+		evdev_free(evdev_r);
+	else
+		sc->evdev_r = evdev_r;
+	return (error);
+}
+
+static int
+psm_register_synaptics(device_t dev)
+{
+	struct psm_softc *sc = device_get_softc(dev);
+	const uint16_t synaptics_absinfo_st[][4] = {
+		{ ABS_X,		sc->synhw.minimumXCoord,
+		    sc->synhw.maximumXCoord, sc->synhw.infoXupmm },
+		{ ABS_Y,		sc->synhw.minimumYCoord,
+		    sc->synhw.maximumYCoord, sc->synhw.infoYupmm },
+		{ ABS_PRESSURE,		0, ELANTECH_FINGER_MAX_P, 0 },
+		ABSINFO_END,
+	};
+	const uint16_t synaptics_absinfo_mt[][4] = {
+		{ ABS_MT_SLOT,		0, PSM_FINGERS-1, 0},
+		{ ABS_MT_TRACKING_ID,	-1, PSM_FINGERS-1, 0},
+		{ ABS_MT_POSITION_X,	sc->synhw.minimumXCoord,
+		    sc->synhw.maximumXCoord, sc->synhw.infoXupmm },
+		{ ABS_MT_POSITION_Y,	sc->synhw.minimumYCoord,
+		    sc->synhw.maximumYCoord, sc->synhw.infoYupmm },
+		{ ABS_MT_PRESSURE,	0, ELANTECH_FINGER_MAX_P, 0 },
+		ABSINFO_END,
+	};
+	struct evdev_dev *evdev_a;
+	int error, i, guest_model;
+
+	evdev_a = evdev_alloc();
+	evdev_set_name(evdev_a, PS2_MOUSE_SYNAPTICS_NAME);
+	evdev_set_phys(evdev_a, device_get_nameunit(dev));
+	evdev_set_id(evdev_a, BUS_I8042, PS2_MOUSE_VENDOR,
+	    PS2_MOUSE_SYNAPTICS_PRODUCT, 0);
+	evdev_set_methods(evdev_a, sc, &psm_ev_methods_a);
+
+	evdev_support_event(evdev_a, EV_SYN);
+	evdev_support_event(evdev_a, EV_KEY);
+	evdev_support_event(evdev_a, EV_ABS);
+	evdev_support_prop(evdev_a, INPUT_PROP_POINTER);
+	if (sc->synhw.capAdvancedGestures)
+		evdev_support_prop(evdev_a, INPUT_PROP_SEMI_MT);
+	if (sc->synhw.capClickPad)
+		evdev_support_prop(evdev_a, INPUT_PROP_BUTTONPAD);
+	evdev_support_key(evdev_a, BTN_TOUCH);
+	evdev_support_nfingers(evdev_a, 3);
+	psm_support_abs_bulk(evdev_a, synaptics_absinfo_st);
+	if (sc->synhw.capAdvancedGestures || sc->synhw.capReportsV)
+		psm_support_abs_bulk(evdev_a, synaptics_absinfo_mt);
+	if (sc->synhw.capPalmDetect)
+		evdev_support_abs(evdev_a, ABS_TOOL_WIDTH, 0, 0, 15, 0, 0, 0);
+	evdev_support_key(evdev_a, BTN_LEFT);
+	if (!sc->synhw.capClickPad) {
+		evdev_support_key(evdev_a, BTN_RIGHT);
+		if (sc->synhw.capExtended && sc->synhw.capMiddle)
+			evdev_support_key(evdev_a, BTN_MIDDLE);
+	}
+	if (sc->synhw.capExtended && sc->synhw.capFourButtons) {
+		evdev_support_key(evdev_a, BTN_BACK);
+		evdev_support_key(evdev_a, BTN_FORWARD);
+	}
+	if (sc->synhw.capExtended && (sc->synhw.nExtendedButtons > 0))
+		for (i = 0; i < sc->synhw.nExtendedButtons; i++)
+			evdev_support_key(evdev_a, BTN_0 + i);
+
+	error = evdev_register_mtx(evdev_a, &sc->mtx);
+	if (!error && sc->synhw.capPassthrough) {
+		guest_model = sc->tpinfo.sysctl_tree != NULL ?
+		    MOUSE_MODEL_TRACKPOINT : MOUSE_MODEL_GENERIC;
+		error = psm_register(dev, guest_model);
+	}
+	if (error)
+		evdev_free(evdev_a);
+	else
+		sc->evdev_a = evdev_a;
+	return (error);
+}
+
+static int
+psm_register_elantech(device_t dev)
+{
+	struct psm_softc *sc = device_get_softc(dev);
+	const uint16_t elantech_absinfo[][4] = {
+		{ ABS_X,		0, sc->elanhw.sizex,
+					   sc->elanhw.dpmmx },
+		{ ABS_Y,		0, sc->elanhw.sizey,
+					   sc->elanhw.dpmmy },
+		{ ABS_PRESSURE,		0, ELANTECH_FINGER_MAX_P, 0 },
+		{ ABS_TOOL_WIDTH,	0, ELANTECH_FINGER_MAX_W, 0 },
+		{ ABS_MT_SLOT,		0, ELANTECH_MAX_FINGERS - 1, 0 },
+		{ ABS_MT_TRACKING_ID,	-1, ELANTECH_MAX_FINGERS - 1, 0 },
+		{ ABS_MT_POSITION_X,	0, sc->elanhw.sizex,
+					   sc->elanhw.dpmmx },
+		{ ABS_MT_POSITION_Y,	0, sc->elanhw.sizey,
+					   sc->elanhw.dpmmy },
+		{ ABS_MT_PRESSURE,	0, ELANTECH_FINGER_MAX_P, 0 },
+		{ ABS_MT_TOUCH_MAJOR,	0, ELANTECH_FINGER_MAX_W *
+					   sc->elanhw.dptracex, 0 },
+		ABSINFO_END,
+	};
+	struct evdev_dev *evdev_a;
+	int error;
+
+	evdev_a = evdev_alloc();
+	evdev_set_name(evdev_a, PS2_MOUSE_ELANTECH_NAME);
+	evdev_set_phys(evdev_a, device_get_nameunit(dev));
+	evdev_set_id(evdev_a, BUS_I8042, PS2_MOUSE_VENDOR,
+	    PS2_MOUSE_ELANTECH_PRODUCT, 0);
+	evdev_set_methods(evdev_a, sc, &psm_ev_methods_a);
+
+	evdev_support_event(evdev_a, EV_SYN);
+	evdev_support_event(evdev_a, EV_KEY);
+	evdev_support_event(evdev_a, EV_ABS);
+	evdev_support_prop(evdev_a, INPUT_PROP_POINTER);
+	if (sc->elanhw.issemimt)
+		evdev_support_prop(evdev_a, INPUT_PROP_SEMI_MT);
+	if (sc->elanhw.isclickpad)
+		evdev_support_prop(evdev_a, INPUT_PROP_BUTTONPAD);
+	evdev_support_key(evdev_a, BTN_TOUCH);
+	evdev_support_nfingers(evdev_a, ELANTECH_MAX_FINGERS);
+	evdev_support_key(evdev_a, BTN_LEFT);
+	if (!sc->elanhw.isclickpad)
+		evdev_support_key(evdev_a, BTN_RIGHT);
+	psm_support_abs_bulk(evdev_a, elantech_absinfo);
+
+	error = evdev_register_mtx(evdev_a, &sc->mtx);
+	if (!error && sc->elanhw.hastrackpoint)
+		error = psm_register(dev, MOUSE_MODEL_ELANTECH);
+	if (error)
+		evdev_free(evdev_a);
+	else
+		sc->evdev_a = evdev_a;
+	return (error);
+}
+#endif
 
 static int
 psmattach(device_t dev)
@@ -1610,22 +1929,23 @@ psmattach(device_t dev)
 	struct psm_softc *sc = device_get_softc(dev);
 	int error;
 	int rid;
-#ifdef EVDEV
-	int i;
+#ifdef EVDEV_SUPPORT
+	//int i;
 #endif
 
 	/* Setup initial state */
 	sc->state = PSM_VALID;
-	callout_init(&sc->callout, 0);
-	callout_init(&sc->softcallout, 0);
+	mtx_init(&sc->mtx, "psm lock", NULL, MTX_DEF);
+	callout_init_mtx(&sc->callout, &sc->mtx, 0);
+	callout_init_mtx(&sc->softcallout, &sc->mtx, 0);
 
 	/* Setup our interrupt handler */
 	rid = KBDC_RID_AUX;
 	sc->intr = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
 	if (sc->intr == NULL)
 		return (ENXIO);
-	error = bus_setup_intr(dev, sc->intr, INTR_TYPE_TTY, NULL, psmintr, sc,
-	    &sc->ih);
+	error = bus_setup_intr(dev, sc->intr, INTR_TYPE_TTY | INTR_MPSAFE,
+	    NULL, psmintr, sc, &sc->ih);
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
 		return (error);
@@ -1637,7 +1957,23 @@ psmattach(device_t dev)
 	sc->bdev = make_dev(&psm_cdevsw, 0, 0, 0, 0666, "bpsm%d", unit);
 	sc->bdev->si_drv1 = sc;
 
-#ifdef EVDEV
+#ifdef EVDEV_SUPPORT
+	switch (sc->hw.model) {
+	case MOUSE_MODEL_SYNAPTICS:
+		error = psm_register_synaptics(dev);
+		break;
+
+	case MOUSE_MODEL_ELANTECH:
+		error = psm_register_elantech(dev);
+		break;
+
+	default:
+		error = psm_register(dev, sc->hw.model);
+	}
+
+	if (error)
+		return (error);
+#if 0
 	sc->evdev = evdev_alloc();
 	evdev_set_name(sc->evdev, model_name(sc->hw.model));
 	evdev_set_serial(sc->evdev, "0");
@@ -1670,6 +2006,7 @@ psmattach(device_t dev)
 	error = evdev_register(dev, sc->evdev);
 	if (error)
 		return (error);
+#endif
 #endif
 
 	/* Some touchpad devices need full reinitialization after suspend. */
@@ -1717,8 +2054,13 @@ psmdetach(device_t dev)
 	int rid;
 
 	sc = device_get_softc(dev);
-	if (sc->state & (PSM_OPEN | PSM_EV_OPEN))
+	if (sc->state & (PSM_OPEN | PSM_EV_OPEN_R | PSM_EV_OPEN_A))
 		return (EBUSY);
+
+#ifdef EVDEV_SUPPORT
+	evdev_free(sc->evdev_r);
+	evdev_free(sc->evdev_a);
+#endif
 
 	rid = KBDC_RID_AUX;
 	bus_teardown_intr(dev, sc->intr, sc->ih);
@@ -1727,45 +2069,92 @@ psmdetach(device_t dev)
 	destroy_dev(sc->dev);
 	destroy_dev(sc->bdev);
 
-	callout_drain(&sc->callout);
-	callout_drain(&sc->softcallout);
+	psm_lock(sc);
+	callout_stop(&sc->callout);
+	callout_stop(&sc->softcallout);
+	psm_unlock(sc);
+	mtx_destroy(&sc->mtx);
 
 	return (0);
 }
 
-#ifdef EVDEV
+#ifdef EVDEV_SUPPORT
 static int
-psm_ev_open(struct evdev_dev *evdev, void *ev_softc)
+psm_ev_open_r(struct evdev_dev *evdev, void *ev_softc)
 {
 	struct psm_softc *sc = (struct psm_softc *)ev_softc;
 	int err = 0;
 
+	psm_lock_assert(sc);
+
 	/* Get device data */
-	if ((sc == NULL) || (sc->state & PSM_VALID) == 0) {
+	if ((sc->state & PSM_VALID) == 0) {
 		/* the device is no longer valid/functioning */
 		return (ENXIO);
 	}
 
-	if (!(sc->state & PSM_OPEN))
+	if (!(sc->state & (PSM_OPEN | PSM_EV_OPEN_A)))
 		err = psmopen(sc);
 
 	if (err == 0)
-		sc->state |= PSM_EV_OPEN;
+		sc->state |= PSM_EV_OPEN_R;
 
 	return (err);
 }
 
 static void
-psm_ev_close(struct evdev_dev *evdev, void *ev_softc)
+psm_ev_close_r(struct evdev_dev *evdev, void *ev_softc)
 {
 	struct psm_softc *sc = (struct psm_softc *)ev_softc;
 
-	sc->state &= ~PSM_EV_OPEN;
+	psm_lock_assert(sc);
 
-	if (sc->state & PSM_OPEN)
+	sc->state &= ~PSM_EV_OPEN_R;
+
+	if (sc->state & (PSM_OPEN | PSM_EV_OPEN_A))
 		return;
 
-	psmclose(sc);
+	if (sc->state & PSM_VALID)
+		psmclose(sc);
+}
+
+static int
+psm_ev_open_a(struct evdev_dev *evdev, void *ev_softc)
+{
+	struct psm_softc *sc = (struct psm_softc *)ev_softc;
+	int err = 0;
+
+	psm_lock_assert(sc);
+
+	/* Get device data */
+	if ((sc->state & PSM_VALID) == 0) {
+		/* the device is no longer valid/functioning */
+		return (ENXIO);
+	}
+
+	if (!(sc->state & (PSM_OPEN | PSM_EV_OPEN_R)))
+		err = psmopen(sc);
+
+	if (err == 0)
+		sc->state |= PSM_EV_OPEN_A;
+
+	return (err);
+}
+
+static void
+psm_ev_close_a(struct evdev_dev *evdev, void *ev_softc)
+{
+	struct psm_softc *sc = (struct psm_softc *)ev_softc;
+
+	psm_lock_assert(sc);
+
+	sc->state &= ~PSM_EV_OPEN_A;
+
+	if (sc->state & (PSM_OPEN | PSM_EV_OPEN_R))
+		return;
+
+	if (sc->state & PSM_VALID)
+		psmclose(sc);
 }
 #endif
 
@@ -1782,19 +2171,26 @@ psm_cdev_open(struct cdev *dev, int flag, int fmt, struct thread *td)
 		return (ENXIO);
 	}
 
-	/* Disallow multiple opens */
-	if (sc->state & PSM_OPEN)
-		return (EBUSY);
+	psm_lock(sc);
 
-#ifdef EVDEV
+	/* Disallow multiple opens */
+	if (sc->state & PSM_OPEN) {
+		psm_unlock(sc);
+		return (EBUSY);
+	}
+
+#ifdef EVDEV_SUPPORT
 	/* Already opened by evdev */
-	if (!(sc->state & PSM_EV_OPEN))
+	if (!(sc->state & (PSM_EV_OPEN_R | PSM_EV_OPEN_A)))
 #endif
 		err = psmopen(sc);
 
 	if (err == 0)
 		sc->state |= PSM_OPEN;
+	else
+		device_unbusy(devclass_get_device(psm_devclass, sc->unit));
 
+	psm_unlock(sc);
 	return (err);
 }
 
@@ -1811,15 +2207,25 @@ psm_cdev_close(struct cdev *dev, int flag, int fmt, struct thread *td)
 		return (ENXIO);
 	}
 
-#ifdef EVDEV
+	psm_lock(sc);
+
+#ifdef EVDEV_SUPPORT
 	/* Still opened by evdev */
-	if (!(sc->state & PSM_EV_OPEN))
+	if (!(sc->state & (PSM_EV_OPEN_R | PSM_EV_OPEN_A)))
 #endif
 		err = psmclose(sc);
 
-	if (err == 0)
+	if (err == 0) {
 		sc->state &= ~PSM_OPEN;
+		/* clean up any sigio requests */
+		if (sc->async != NULL) {
+			funsetown(&sc->async);
+			sc->async = NULL;
+		}
+		device_unbusy(devclass_get_device(psm_devclass, sc->unit));
+	}
 
+	psm_unlock(sc);
 	return (err);
 }
 
@@ -1828,7 +2234,8 @@ psmopen(struct psm_softc *sc)
 {
 	int command_byte;
 	int err;
-	int s;
+
+	psm_lock_assert(sc);
 
 	device_busy(devclass_get_device(psm_devclass, sc->unit));
 
@@ -1858,11 +2265,9 @@ psmopen(struct psm_softc *sc)
 	sc->pkterrors = 0;
 
 	/* don't let timeout routines in the keyboard driver to poll the kbdc */
-	if (!kbdc_lock(sc->kbdc, TRUE))
-		return (EIO);
+	kbdc_lock(sc->kbdc);
 
 	/* save the current controller command byte */
-	s = spltty();
 	command_byte = get_controller_command_byte(sc->kbdc);
 
 	/* enable the aux port and temporalily disable the keyboard */
@@ -1871,26 +2276,17 @@ psmopen(struct psm_softc *sc)
 	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
 	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR; do you know how to get out of this? */
-		kbdc_lock(sc->kbdc, FALSE);
-		splx(s);
+		kbdc_unlock(sc->kbdc);
 		log(LOG_ERR,
 		    "psm%d: unable to set the command byte (psmopen).\n",
 		    sc->unit);
 		return (EIO);
 	}
-	/*
-	 * Now that the keyboard controller is told not to generate
-	 * the keyboard and mouse interrupts, call `splx()' to allow
-	 * the other tty interrupts. The clock interrupt may also occur,
-	 * but timeout routines will be blocked by the poll flag set
-	 * via `kbdc_lock()'
-	 */
-	splx(s);
 
 	/* enable the mouse device */
 	err = doopen(sc, command_byte);
 
-	kbdc_lock(sc->kbdc, FALSE);
+	kbdc_unlock(sc->kbdc);
 	return (err);
 }
 
@@ -1899,18 +2295,14 @@ psmclose(struct psm_softc *sc)
 {
 	int stat[3];
 	int command_byte;
-	int s;
 
 	/* don't let timeout routines in the keyboard driver to poll the kbdc */
-	if (!kbdc_lock(sc->kbdc, TRUE))
-		return (EIO);
+	kbdc_lock(sc->kbdc);
 
 	/* save the current controller command byte */
-	s = spltty();
 	command_byte = get_controller_command_byte(sc->kbdc);
 	if (command_byte == -1) {
-		kbdc_lock(sc->kbdc, FALSE);
-		splx(s);
+		kbdc_unlock(sc->kbdc);
 		return (EIO);
 	}
 
@@ -1929,7 +2321,6 @@ psmclose(struct psm_softc *sc)
 		 * so long as the mouse will accept the DISABLE command.
 		 */
 	}
-	splx(s);
 
 	/* stop the watchdog timer */
 	callout_stop(&sc->callout);
@@ -1973,15 +2364,8 @@ psmclose(struct psm_softc *sc)
 	/* remove anything left in the output buffer */
 	empty_aux_buffer(sc->kbdc, 10);
 
-	/* clean up and sigio requests */
-	if (sc->async != NULL) {
-		funsetown(&sc->async);
-		sc->async = NULL;
-	}
-
 	/* close is almost always successful */
-	kbdc_lock(sc->kbdc, FALSE);
-	device_unbusy(devclass_get_device(psm_devclass, sc->unit));
+	kbdc_unlock(sc->kbdc);
 	return (0);
 }
 
@@ -2053,36 +2437,33 @@ psmread(struct cdev *dev, struct uio *uio, int flag)
 	struct psm_softc *sc = dev->si_drv1;
 	u_char buf[PSM_SMALLBUFSIZE];
 	int error = 0;
-	int s;
 	int l;
 
 	if ((sc->state & PSM_VALID) == 0)
 		return (EIO);
 
 	/* block until mouse activity occurred */
-	s = spltty();
+	psm_lock(sc);
 	while (sc->queue.count <= 0) {
 		if (dev != sc->bdev) {
-			splx(s);
+			psm_unlock(sc);
 			return (EWOULDBLOCK);
 		}
 		sc->state |= PSM_ASLP;
-		error = tsleep(sc, PZERO | PCATCH, "psmrea", 0);
+		error = mtx_sleep(sc, &sc->mtx, PZERO | PCATCH, "psmrea", 0);
 		sc->state &= ~PSM_ASLP;
 		if (error) {
-			splx(s);
+			psm_unlock(sc);
 			return (error);
 		} else if ((sc->state & PSM_VALID) == 0) {
 			/* the device disappeared! */
-			splx(s);
+			psm_unlock(sc);
 			return (EIO);
 		}
 	}
-	splx(s);
 
 	/* copy data to the user land */
 	while ((sc->queue.count > 0) && (uio->uio_resid > 0)) {
-		s = spltty();
 		l = imin(sc->queue.count, uio->uio_resid);
 		if (l > sizeof(buf))
 			l = sizeof(buf);
@@ -2096,11 +2477,13 @@ psmread(struct cdev *dev, struct uio *uio, int flag)
 			bcopy(&sc->queue.buf[sc->queue.head], &buf[0], l);
 		sc->queue.count -= l;
 		sc->queue.head = (sc->queue.head + l) % sizeof(sc->queue.buf);
-		splx(s);
+		psm_unlock(sc);
 		error = uiomove(buf, l, uio);
+		psm_lock(sc);
 		if (error)
 			break;
 	}
+	psm_unlock(sc);
 
 	return (error);
 }
@@ -2108,20 +2491,18 @@ psmread(struct cdev *dev, struct uio *uio, int flag)
 static int
 block_mouse_data(struct psm_softc *sc, int *c)
 {
-	int s;
 
-	if (!kbdc_lock(sc->kbdc, TRUE))
-		return (EIO);
+	psm_lock(sc);
+	kbdc_lock(sc->kbdc);
 
-	s = spltty();
 	*c = get_controller_command_byte(sc->kbdc);
 	if ((*c == -1) || !set_controller_command_byte(sc->kbdc,
 	    kbdc_get_device_mask(sc->kbdc),
 	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
 	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* this is CONTROLLER ERROR */
-		splx(s);
-		kbdc_lock(sc->kbdc, FALSE);
+		kbdc_unlock(sc->kbdc);
+		psm_unlock(sc);
 		return (EIO);
 	}
 
@@ -2134,13 +2515,12 @@ block_mouse_data(struct psm_softc *sc, int *c)
 	 * output buffer; throw it away. Note that the second argument
 	 * to `empty_aux_buffer()' is zero, so that the call will just
 	 * flush the internal queue.
-	 * `psmintr()' will be invoked after `splx()' if an interrupt is
-	 * pending; it will see no data and returns immediately.
+	 * `psmintr()' will be invoked after `kbdc_unlock()' if an interrupt
+	 * is pending; it will see no data and returns immediately.
 	 */
 	empty_aux_buffer(sc->kbdc, 0);		/* flush the queue */
 	read_aux_data_no_wait(sc->kbdc);	/* throw away data if any */
 	flushpackets(sc);
-	splx(s);
 
 	return (0);
 }
@@ -2148,6 +2528,8 @@ block_mouse_data(struct psm_softc *sc, int *c)
 static void
 dropqueue(struct psm_softc *sc)
 {
+
+	psm_lock_assert(sc);
 
 	sc->queue.count = 0;
 	sc->queue.head = 0;
@@ -2162,6 +2544,8 @@ dropqueue(struct psm_softc *sc)
 static void
 flushpackets(struct psm_softc *sc)
 {
+
+	psm_lock_assert(sc);
 
 	dropqueue(sc);
 	bzero(&sc->pqueue, sizeof(sc->pqueue));
@@ -2190,7 +2574,8 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 		error = EIO;
 	}
 
-	kbdc_lock(sc->kbdc, FALSE);
+	kbdc_unlock(sc->kbdc);
+	psm_unlock(sc);
 	return (error);
 }
 
@@ -2213,14 +2598,20 @@ psmwrite(struct cdev *dev, struct uio *uio, int flag)
 		error = uiomove(buf, l, uio);
 		if (error)
 			break;
+		kbdc_lock(sc->kbdc);
 		for (i = 0; i < l; i++) {
 			VLOG(4, (LOG_DEBUG, "psm: cmd 0x%x\n", buf[i]));
 			if (!write_aux_command(sc->kbdc, buf[i])) {
+				kbdc_unlock(sc->kbdc);
 				VLOG(2, (LOG_DEBUG,
 				    "psm: cmd 0x%x failed.\n", buf[i]));
-				return (reinitialize(sc, FALSE));
+				psm_lock(sc);
+				error = reinitialize(sc, FALSE);
+				psm_unlock(sc);
+				return (error);
 			}
 		}
+		kbdc_unlock(sc->kbdc);
 	}
 
 	return (error);
@@ -2240,39 +2631,38 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 	int stat[3];
 	int command_byte;
 	int error = 0;
-	int s;
 
 	/* Perform IOCTL command */
 	switch (cmd) {
 
 	case OLD_MOUSE_GETHWINFO:
-		s = spltty();
+		psm_lock(sc);
 		((old_mousehw_t *)addr)->buttons = sc->hw.buttons;
 		((old_mousehw_t *)addr)->iftype = sc->hw.iftype;
 		((old_mousehw_t *)addr)->type = sc->hw.type;
 		((old_mousehw_t *)addr)->hwid = sc->hw.hwid & 0x00ff;
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case MOUSE_GETHWINFO:
-		s = spltty();
+		psm_lock(sc);
 		*(mousehw_t *)addr = sc->hw;
 		if (sc->mode.level == PSM_LEVEL_BASE)
 			((mousehw_t *)addr)->model = MOUSE_MODEL_GENERIC;
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case MOUSE_SYN_GETHWINFO:
-		s = spltty();
+		psm_lock(sc);
 		if (sc->synhw.infoMajor >= 4)
 			*(synapticshw_t *)addr = sc->synhw;
 		else
 			error = EINVAL;
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case OLD_MOUSE_GETMODE:
-		s = spltty();
+		psm_lock(sc);
 		switch (sc->mode.level) {
 		case PSM_LEVEL_BASE:
 			((old_mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
@@ -2288,11 +2678,11 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 		((old_mousemode_t *)addr)->rate = sc->mode.rate;
 		((old_mousemode_t *)addr)->resolution = sc->mode.resolution;
 		((old_mousemode_t *)addr)->accelfactor = sc->mode.accelfactor;
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case MOUSE_GETMODE:
-		s = spltty();
+		psm_lock(sc);
 		*(mousemode_t *)addr = sc->mode;
 		if ((sc->flags & PSM_NEED_SYNCBITS) != 0) {
 			((mousemode_t *)addr)->syncmask[0] = 0;
@@ -2318,7 +2708,7 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 			((mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
 			break;
 		}
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case OLD_MOUSE_SETMODE:
@@ -2398,12 +2788,10 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 		set_mouse_scaling(sc->kbdc, 1);
 		get_mouse_status(sc->kbdc, stat, 0, 3);
 
-		s = spltty();
 		sc->mode.rate = mode.rate;
 		sc->mode.resolution = mode.resolution;
 		sc->mode.accelfactor = mode.accelfactor;
 		sc->mode.level = mode.level;
-		splx(s);
 
 		unblock_mouse_data(sc, command_byte);
 		break;
@@ -2420,7 +2808,7 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 		break;
 
 	case MOUSE_GETSTATUS:
-		s = spltty();
+		psm_lock(sc);
 		status = sc->status;
 		sc->status.flags = 0;
 		sc->status.obutton = sc->status.button;
@@ -2428,7 +2816,7 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 		sc->status.dx = 0;
 		sc->status.dy = 0;
 		sc->status.dz = 0;
-		splx(s);
+		psm_unlock(sc);
 		*(mousestatus_t *)addr = status;
 		break;
 
@@ -2436,11 +2824,11 @@ psmioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag,
 	case MOUSE_GETVARS:
 		var = (mousevar_t *)addr;
 		bzero(var, sizeof(*var));
-		s = spltty();
+		psm_lock(sc);
 		var->var[0] = MOUSE_VARS_PS2_SIG;
 		var->var[1] = sc->config;
 		var->var[2] = sc->flags;
-		splx(s);
+		psm_unlock(sc);
 		break;
 
 	case MOUSE_SETVARS:
@@ -2559,17 +2947,13 @@ static void
 psmtimeout(void *arg)
 {
 	struct psm_softc *sc;
-	int s;
 
 	sc = (struct psm_softc *)arg;
-	s = spltty();
-	if (sc->watchdog && kbdc_lock(sc->kbdc, TRUE)) {
+	if (sc->watchdog) {
 		VLOG(4, (LOG_DEBUG, "psm%d: lost interrupt?\n", sc->unit));
-		psmintr(sc);
-		kbdc_lock(sc->kbdc, FALSE);
+		psmintr_locked(sc);
 	}
 	sc->watchdog = TRUE;
-	splx(s);
 	callout_reset(&sc->callout, hz, psmtimeout, sc);
 }
 
@@ -2618,21 +3002,33 @@ SYSCTL_INT(_hw_psm, OID_AUTO, trackpoint_support, CTLFLAG_RDTUN,
 SYSCTL_INT(_hw_psm, OID_AUTO, elantech_support, CTLFLAG_RDTUN,
     &elantech_support, 0, "Enable support for Elantech touchpads");
 
+static int
+psm_read_aux_data(KBDC kbdc)
+{
+	int c;
+
+	kbdc_lock(kbdc);
+	c = read_aux_data_no_wait(kbdc);
+	kbdc_unlock(kbdc);
+	return (c);
+}
+
 static void
-psmintr(void *arg)
+psmintr_locked(void *arg)
 {
 	struct psm_softc *sc = arg;
 	struct timeval now;
 	int c;
 	packetbuf_t *pb;
 
+	psm_lock_assert(sc);
 
 	/* read until there is nothing to read */
-	while((c = read_aux_data_no_wait(sc->kbdc)) != -1) {
+	while((c = psm_read_aux_data(sc->kbdc)) != -1) {
 		pb = &sc->pqueue[sc->pqueue_end];
 
 		/* discard the byte if the device is not open */
-		if ((sc->state & (PSM_OPEN | PSM_EV_OPEN)) == 0)
+		if (!((sc->state & (PSM_OPEN | PSM_EV_OPEN_R | PSM_EV_OPEN_A))))
 			continue;
 
 		getmicrouptime(&now);
@@ -2712,8 +3108,10 @@ psmintr(void *arg)
 				VLOG(3, (LOG_DEBUG,
 				    "psmintr: re-enable the mouse.\n"));
 				pb->inputbytes = 0;
+				kbdc_lock(sc->kbdc);
 				disable_aux_dev(sc->kbdc);
 				enable_aux_dev(sc->kbdc);
+				kbdc_unlock(sc->kbdc);
 			} else {
 				VLOG(3, (LOG_DEBUG,
 				    "psmintr: discard a byte (%d)\n",
@@ -2771,6 +3169,16 @@ next:
 			    psmhz < 1 ? 1 : (hz/psmhz), psmsoftintr, arg);
 		}
 	}
+}
+
+static void
+psmintr(void *arg)
+{
+	struct psm_softc *sc = arg;
+
+	psm_lock(sc);
+	psmintr_locked(sc);
+	psm_unlock(sc);
 }
 
 static void
@@ -2990,7 +3398,15 @@ proc_synaptics(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 				guest_buttons |= MOUSE_BUTTON2DOWN;
 			if (pb->ipacket[1] & 0x02)
 				guest_buttons |= MOUSE_BUTTON3DOWN;
-
+#ifdef EVDEV_SUPPORT
+			if (evdev_rcpt_mask & EVDEV_RCPT_HW_MOUSE) {
+				evdev_push_rel(sc->evdev_r, REL_X, *x);
+				evdev_push_rel(sc->evdev_r, REL_Y, -*y);
+				evdev_push_mouse_btn(sc->evdev_r,
+				    guest_buttons);
+				evdev_sync(sc->evdev_r);
+			}
+#endif
 			ms->button = touchpad_buttons | guest_buttons |
 			    sc->extended_buttons;
 		}
@@ -3101,6 +3517,24 @@ proc_synaptics(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 			int mask = 0;
 			maskedbits = (sc->synhw.nExtendedButtons + 1) >> 1;
 			mask = (1 << maskedbits) - 1;
+#ifdef EVDEV_SUPPORT
+			int i;
+			if (evdev_rcpt_mask & EVDEV_RCPT_HW_MOUSE) {
+				if (sc->synhw.capPassthrough) {
+					evdev_push_mouse_btn(sc->evdev_r,
+						extended_buttons);
+					evdev_sync(sc->evdev_r);
+				}
+				for (i = 0; i < maskedbits; i++) {
+					evdev_push_key(sc->evdev_a,
+					    BTN_0 + i * 2,
+					    pb->ipacket[4] & (1 << i));
+					evdev_push_key(sc->evdev_a,
+					    BTN_0 + i * 2 + 1,
+					    pb->ipacket[5] & (1 << i));
+				}
+			}
+#endif
 			pb->ipacket[4] &= ~(mask);
 			pb->ipacket[5] &= ~(mask);
 		} else	if (!sc->syninfo.directional_scrolls &&
@@ -3151,6 +3585,31 @@ proc_synaptics(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 	for (id = 0; id < PSM_FINGERS; id++)
 		if (id >= nfingers)
 			PSM_FINGER_RESET(f[id]);
+
+#ifdef EVDEV_SUPPORT
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_MOUSE) {
+		for (id = 0; id < PSM_FINGERS; id++) {
+			if (PSM_FINGER_IS_SET(f[id]))
+				psm_push_mt_finger(sc, id, &f[id]);
+			else
+				psm_release_mt_slot(sc->evdev_a, id);
+		}
+		evdev_push_key(sc->evdev_a, BTN_TOUCH, nfingers > 0);
+		evdev_push_nfingers(sc->evdev_a, nfingers);
+		if (nfingers > 0)
+			psm_push_st_finger(sc, &f[0]);
+		else
+			evdev_push_abs(sc->evdev_a, ABS_PRESSURE, 0);
+		evdev_push_mouse_btn(sc->evdev_a, touchpad_buttons);
+		if (sc->synhw.capExtended && sc->synhw.capFourButtons) {
+			evdev_push_key(sc->evdev_a, BTN_FORWARD,
+			    touchpad_buttons & MOUSE_BUTTON4DOWN);
+			evdev_push_key(sc->evdev_a, BTN_BACK,
+			    touchpad_buttons & MOUSE_BUTTON5DOWN);
+		}
+		evdev_sync(sc->evdev_a);
+	}
+#endif
 
 	ms->button = touchpad_buttons;
 
@@ -4151,7 +4610,12 @@ proc_elantech(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 		    ((pb->ipacket[0] & 0x01) ? MOUSE_BUTTON1DOWN : 0) |
 		    ((pb->ipacket[0] & 0x02) ? MOUSE_BUTTON3DOWN : 0) |
 		    ((pb->ipacket[0] & 0x04) ? MOUSE_BUTTON2DOWN : 0);
-
+#ifdef EVDEV_SUPPORT
+		evdev_push_rel(sc->evdev_r, REL_X, *x);
+		evdev_push_rel(sc->evdev_r, REL_Y, -*y);
+		evdev_push_mouse_btn(sc->evdev_r, trackpoint_button);
+		evdev_sync(sc->evdev_r);
+#endif
 		ms->button = touchpad_button | trackpoint_button;
 		return (0);
 
@@ -4177,6 +4641,31 @@ proc_elantech(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 		    ((pb->ipacket[0] & 0x01) ? MOUSE_BUTTON1DOWN : 0) |
 		    ((pb->ipacket[0] & 0x02) ? MOUSE_BUTTON3DOWN : 0);
 	}
+
+#ifdef EVDEV_SUPPORT
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_MOUSE) {
+		for (id = 0; id < ELANTECH_MAX_FINGERS; id++) {
+			if (PSM_FINGER_IS_SET(f[id])) {
+				psm_push_mt_finger(sc, id, &f[id]);
+				/* Convert touch width to surface units */
+				evdev_push_abs(sc->evdev_a, ABS_MT_TOUCH_MAJOR,
+				    f[id].w * sc->elanhw.dptracex);
+			}
+			if (sc->elanaction.mask & (1 << id) &&
+			    !(mask & (1 << id)))
+				psm_release_mt_slot(sc->evdev_a, id);
+		}
+		evdev_push_key(sc->evdev_a, BTN_TOUCH, nfingers > 0);
+		evdev_push_nfingers(sc->evdev_a, nfingers);
+		if (nfingers > 0) {
+			if (PSM_FINGER_IS_SET(f[0]))
+				psm_push_st_finger(sc, &f[0]);
+		} else
+			evdev_push_abs(sc->evdev_a, ABS_PRESSURE, 0);
+		evdev_push_mouse_btn(sc->evdev_a, touchpad_button);
+		evdev_sync(sc->evdev_a);
+	}
+#endif
 
 	ms->button = touchpad_button | trackpoint_button;
 
@@ -4295,6 +4784,8 @@ psmsoftintridle(void *arg)
 	struct psm_softc *sc = arg;
 	packetbuf_t *pb;
 
+	psm_lock_assert(sc);
+
 	/* Invoke soft handler only when pqueue is empty. Otherwise it will be
 	 * invoked from psmintr soon with pqueue filled with real data */
 	if (sc->pqueue_start == sc->pqueue_end &&
@@ -4334,11 +4825,11 @@ psmsoftintr(void *arg)
 	struct psm_softc *sc = arg;
 	mousestatus_t ms;
 	packetbuf_t *pb;
-	int x, y, z, c, l, s;
+	int x, y, z, c, l;
+
+	psm_lock_assert(sc);
 
 	getmicrouptime(&sc->lastsoftintr);
-
-	s = spltty();
 
 	do {
 		pb = &sc->pqueue[sc->pqueue_start];
@@ -4518,6 +5009,41 @@ psmsoftintr(void *arg)
 			break;
 		}
 
+#ifdef EVDEV_SUPPORT
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_MOUSE &&
+	    sc->hw.model != MOUSE_MODEL_ELANTECH &&
+	    sc->hw.model != MOUSE_MODEL_SYNAPTICS) {
+		evdev_push_rel(sc->evdev_r, EV_REL, x);
+		evdev_push_rel(sc->evdev_r, EV_REL, -y);
+
+		switch (sc->hw.model) {
+		case MOUSE_MODEL_EXPLORER:
+		case MOUSE_MODEL_INTELLI:
+		case MOUSE_MODEL_NET:
+		case MOUSE_MODEL_NETSCROLL:
+		case MOUSE_MODEL_4DPLUS:
+			evdev_push_rel(sc->evdev_r, REL_WHEEL, -z);
+			break;
+		case MOUSE_MODEL_MOUSEMANPLUS:
+		case MOUSE_MODEL_4D:
+			switch (z) {
+			case 1:
+			case -1:
+				evdev_push_rel(sc->evdev_r, REL_WHEEL, -z);
+				break;
+			case 2:
+			case -2:
+				evdev_push_rel(sc->evdev_r, REL_HWHEEL, z / 2);
+				break;
+			}
+			break;
+		}
+
+		evdev_push_mouse_btn(sc->evdev_r, ms.button);
+		evdev_sync(sc->evdev_r);
+	}
+#endif
+
 	/* scale values */
 	if (sc->mode.accelfactor >= 1) {
 		if (x != 0) {
@@ -4596,25 +5122,23 @@ next:
 		VLOG(2, (LOG_DEBUG, "softintr: callout set: %d ticks\n",
 		    tvtohz(&sc->idletimeout)));
 	}
-	splx(s);
 }
 
 static int
 psmpoll(struct cdev *dev, int events, struct thread *td)
 {
 	struct psm_softc *sc = dev->si_drv1;
-	int s;
 	int revents = 0;
 
 	/* Return true if a mouse event available */
-	s = spltty();
+	psm_lock(sc);
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (sc->queue.count > 0)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
 			selrecord(td, &sc->rsel);
 	}
-	splx(s);
+	psm_unlock(sc);
 
 	return (revents);
 }
@@ -5892,8 +6416,10 @@ enable_synaptics(struct psm_softc *sc, enum probearg arg)
 
 	if (arg == PROBE) {
 		/* Create sysctl tree. */
+		kbdc_unlock(sc->kbdc);
 		synaptics_sysctl_create_tree(sc, "synaptics",
 		    "Synaptics TouchPad");
+		kbdc_lock(sc->kbdc);
 		sc->hw.buttons = buttons;
 	}
 
@@ -6166,7 +6692,9 @@ enable_trackpoint(struct psm_softc *sc, enum probearg arg)
 		synaptics_passthrough_off(sc);
 
 	if (arg == PROBE) {
+		kbdc_unlock(sc->kbdc);
 		trackpoint_sysctl_create_tree(sc);
+		kbdc_lock(sc->kbdc);
 		/*
 		 * Don't overwrite hwid and buttons when we are
 		 * a guest device.
@@ -6566,7 +7094,9 @@ found:
 		sc->hw.buttons = 3;
 
 		/* Initialize synaptics movement smoother */
+		kbdc_unlock(sc->kbdc);
 		elantech_init_synaptics(sc);
+		kbdc_lock(sc->kbdc);
 
 		for (id = 0; id < ELANTECH_MAX_FINGERS; id++)
 			PSM_FINGER_RESET(sc->elanaction.fingers[id]);
@@ -6630,6 +7160,9 @@ psmresume(device_t dev)
 }
 
 DRIVER_MODULE(psm, atkbdc, psm_driver, psm_devclass, 0, 0);
+#ifdef EVDEV_SUPPORT
+MODULE_DEPEND(psm, evdev, 1, 1, 1);
+#endif
 
 #ifdef DEV_ISA
 

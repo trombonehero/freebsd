@@ -43,6 +43,8 @@ __FBSDID("$FreeBSD$");
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 
 #if defined(__amd64__)
 #include <machine/clock.h>
@@ -291,7 +293,7 @@ atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
 	if (sc->ioh0 == 0) {	/* XXX */
 	    sc->command_byte = -1;
 	    sc->command_mask = 0;
-	    sc->lock = FALSE;
+	    mtx_init(&sc->lock, "atkbdc lock", NULL, MTX_DEF);
 	    sc->kbd.head = sc->kbd.tail = 0;
 	    sc->aux.head = sc->aux.tail = 0;
 #if KBDIO_DEBUG >= 2
@@ -347,56 +349,6 @@ atkbdc_open(int unit)
 	|| (atkbdc_softc[unit]->ioh0 != 0))		/* XXX */
 	return (KBDC)atkbdc_softc[unit];
     return NULL;
-}
-
-/*
- * I/O access arbitration in `kbdio'
- *
- * The `kbdio' module uses a simplistic convention to arbitrate
- * I/O access to the controller/keyboard/mouse. The convention requires
- * close cooperation of the calling device driver.
- *
- * The device drivers which utilize the `kbdio' module are assumed to
- * have the following set of routines.
- *    a. An interrupt handler (the bottom half of the driver).
- *    b. Timeout routines which may briefly poll the keyboard controller.
- *    c. Routines outside interrupt context (the top half of the driver).
- * They should follow the rules below:
- *    1. The interrupt handler may assume that it always has full access 
- *       to the controller/keyboard/mouse.
- *    2. The other routines must issue `spltty()' if they wish to 
- *       prevent the interrupt handler from accessing 
- *       the controller/keyboard/mouse.
- *    3. The timeout routines and the top half routines of the device driver
- *       arbitrate I/O access by observing the lock flag in `kbdio'.
- *       The flag is manipulated via `kbdc_lock()'; when one wants to
- *       perform I/O, call `kbdc_lock(kbdc, TRUE)' and proceed only if
- *       the call returns with TRUE. Otherwise the caller must back off.
- *       Call `kbdc_lock(kbdc, FALSE)' when necessary I/O operaion
- *       is finished. This mechanism does not prevent the interrupt 
- *       handler from being invoked at any time and carrying out I/O.
- *       Therefore, `spltty()' must be strategically placed in the device
- *       driver code. Also note that the timeout routine may interrupt
- *       `kbdc_lock()' called by the top half of the driver, but this
- *       interruption is OK so long as the timeout routine observes
- *       rule 4 below.
- *    4. The interrupt and timeout routines should not extend I/O operation
- *       across more than one interrupt or timeout; they must complete any
- *       necessary I/O operation within one invocation of the routine.
- *       This means that if the timeout routine acquires the lock flag,
- *       it must reset the flag to FALSE before it returns.
- */
-
-/* set/reset polling lock */
-int 
-kbdc_lock(KBDC p, int lock)
-{
-    int prevlock;
-
-    prevlock = kbdcp(p)->lock;
-    kbdcp(p)->lock = lock;
-
-    return (prevlock != lock);
 }
 
 /* check if any data is waiting to be processed */
@@ -607,6 +559,8 @@ wait_for_aux_ack(struct atkbdc_softc *kbdc)
 int
 write_controller_command(KBDC p, int c)
 {
+    kbdc_lock_assert(p);
+
     if (!wait_while_controller_busy(kbdcp(p)))
 	return FALSE;
     write_command(kbdcp(p), c);
@@ -617,6 +571,8 @@ write_controller_command(KBDC p, int c)
 int
 write_controller_data(KBDC p, int c)
 {
+    kbdc_lock_assert(p);
+
     if (!wait_while_controller_busy(kbdcp(p)))
 	return FALSE;
     write_data(kbdcp(p), c);
@@ -627,6 +583,8 @@ write_controller_data(KBDC p, int c)
 int
 write_kbd_command(KBDC p, int c)
 {
+    kbdc_lock_assert(p);
+
     if (!wait_while_controller_busy(kbdcp(p)))
 	return FALSE;
     write_data(kbdcp(p), c);
@@ -637,6 +595,8 @@ write_kbd_command(KBDC p, int c)
 int
 write_aux_command(KBDC p, int c)
 {
+    kbdc_lock_assert(p);
+
     if (!write_controller_command(p, KBDC_WRITE_TO_AUX))
 	return FALSE;
     return write_controller_data(p, c);
@@ -648,6 +608,8 @@ send_kbd_command(KBDC p, int c)
 {
     int retry = KBD_MAXRETRY;
     int res = -1;
+
+    kbdc_lock_assert(p);
 
     while (retry-- > 0) {
 	if (!write_kbd_command(p, c))
@@ -665,6 +627,8 @@ send_aux_command(KBDC p, int c)
 {
     int retry = KBD_MAXRETRY;
     int res = -1;
+
+    kbdc_lock_assert(p);
 
     while (retry-- > 0) {
 	if (!write_aux_command(p, c))
@@ -692,6 +656,8 @@ send_kbd_command_and_data(KBDC p, int c, int d)
 {
     int retry;
     int res = -1;
+
+    kbdc_lock_assert(p);
 
     for (retry = KBD_MAXRETRY; retry > 0; --retry) {
 	if (!write_kbd_command(p, c))
@@ -721,6 +687,8 @@ send_aux_command_and_data(KBDC p, int c, int d)
 {
     int retry;
     int res = -1;
+
+    kbdc_lock_assert(p);
 
     for (retry = KBD_MAXRETRY; retry > 0; --retry) {
 	if (!write_aux_command(p, c))
@@ -752,6 +720,8 @@ send_aux_command_and_data(KBDC p, int c, int d)
 int
 read_controller_data(KBDC p)
 {
+    kbdc_lock_assert(p);
+
     if (availq(&kbdcp(p)->kbd)) 
         return removeq(&kbdcp(p)->kbd);
     if (availq(&kbdcp(p)->aux)) 
@@ -779,6 +749,8 @@ read_kbd_data(KBDC p)
     }
 #endif
 
+    kbdc_lock_assert(p);
+
     if (availq(&kbdcp(p)->kbd)) 
         return removeq(&kbdcp(p)->kbd);
     if (!wait_for_kbd_data(kbdcp(p)))
@@ -804,6 +776,8 @@ read_kbd_data_no_wait(KBDC p)
     }
 #endif
 
+    kbdc_lock_assert(p);
+
     if (availq(&kbdcp(p)->kbd)) 
         return removeq(&kbdcp(p)->kbd);
     f = read_status(kbdcp(p)) & KBDS_BUFFER_FULL;
@@ -823,6 +797,8 @@ read_kbd_data_no_wait(KBDC p)
 int
 read_aux_data(KBDC p)
 {
+    kbdc_lock_assert(p);
+
     if (availq(&kbdcp(p)->aux)) 
         return removeq(&kbdcp(p)->aux);
     if (!wait_for_aux_data(kbdcp(p)))
@@ -837,6 +813,8 @@ int
 read_aux_data_no_wait(KBDC p)
 {
     int f;
+
+    kbdc_lock_assert(p);
 
     if (availq(&kbdcp(p)->aux)) 
         return removeq(&kbdcp(p)->aux);
@@ -865,6 +843,8 @@ empty_kbd_buffer(KBDC p, int wait)
     int c2 = 0;
 #endif
     int delta = 2;
+
+    kbdc_lock_assert(p);
 
     for (t = wait; t > 0; ) { 
         if ((f = read_status(kbdcp(p))) & KBDS_ANY_BUFFER_FULL) {
@@ -905,6 +885,8 @@ empty_aux_buffer(KBDC p, int wait)
 #endif
     int delta = 2;
 
+    kbdc_lock_assert(p);
+
     for (t = wait; t > 0; ) { 
         if ((f = read_status(kbdcp(p))) & KBDS_ANY_BUFFER_FULL) {
 	    DELAY(KBDD_DELAYTIME);
@@ -943,6 +925,8 @@ empty_both_buffers(KBDC p, int wait)
     int c2 = 0;
 #endif
     int delta = 2;
+
+    kbdc_lock_assert(p);
 
     for (t = wait; t > 0; ) { 
         if ((f = read_status(kbdcp(p))) & KBDS_ANY_BUFFER_FULL) {
@@ -991,6 +975,8 @@ reset_kbd(KBDC p)
     int again = KBD_MAXWAIT;
     int c = KBD_RESEND;		/* keep the compiler happy */
 
+    kbdc_lock_assert(p);
+
     while (retry-- > 0) {
         empty_both_buffers(p, 10);
         if (!write_kbd_command(p, KBDC_RESET_KBD))
@@ -1028,6 +1014,8 @@ reset_aux_dev(KBDC p)
     int retry = KBD_MAXRETRY;
     int again = KBD_MAXWAIT;
     int c = PSM_RESEND;		/* keep the compiler happy */
+
+    kbdc_lock_assert(p);
 
     while (retry-- > 0) {
         empty_both_buffers(p, 10);
@@ -1077,6 +1065,8 @@ test_controller(KBDC p)
     int again = KBD_MAXWAIT;
     int c = KBD_DIAG_FAIL;
 
+    kbdc_lock_assert(p);
+
     while (retry-- > 0) {
         empty_both_buffers(p, 10);
         if (write_controller_command(p, KBDC_DIAGNOSE))
@@ -1105,6 +1095,8 @@ test_kbd_port(KBDC p)
     int again = KBD_MAXWAIT;
     int c = -1;
 
+    kbdc_lock_assert(p);
+
     while (retry-- > 0) {
         empty_both_buffers(p, 10);
         if (write_controller_command(p, KBDC_TEST_KBD_PORT))
@@ -1130,6 +1122,8 @@ test_aux_port(KBDC p)
     int retry = KBD_MAXRETRY;
     int again = KBD_MAXWAIT;
     int c = -1;
+
+    kbdc_lock_assert(p);
 
     while (retry-- > 0) {
         empty_both_buffers(p, 10);
@@ -1167,6 +1161,8 @@ kbdc_set_device_mask(KBDC p, int mask)
 int
 get_controller_command_byte(KBDC p)
 {
+    kbdc_lock_assert(p);
+
     if (kbdcp(p)->command_byte != -1)
 	return kbdcp(p)->command_byte;
     if (!write_controller_command(p, KBDC_GET_COMMAND_BYTE))
@@ -1179,6 +1175,8 @@ get_controller_command_byte(KBDC p)
 int
 set_controller_command_byte(KBDC p, int mask, int command)
 {
+    kbdc_lock_assert(p);
+
     if (get_controller_command_byte(p) == -1)
 	return FALSE;
 

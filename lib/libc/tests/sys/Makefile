@@ -12,6 +12,7 @@ NETBSD_ATF_TESTS_C+=		access_test
 NETBSD_ATF_TESTS_C+=		bind_test
 NETBSD_ATF_TESTS_C+=		chroot_test
 NETBSD_ATF_TESTS_C+=		clock_gettime_test
+NETBSD_ATF_TESTS_C+=		clock_nanosleep_test
 NETBSD_ATF_TESTS_C+=		connect_test
 NETBSD_ATF_TESTS_C+=		dup_test
 NETBSD_ATF_TESTS_C+=		fsync_test
@@ -71,6 +72,9 @@ LIBADD.getpid_test+=		pthread
 LIBADD.timer_create_test+=	rt
 
 .include "../Makefile.netbsd-tests"
+
+SRCS.mlock_test+=		mlock_helper.c
+SRCS.setrlimit_test+=		mlock_helper.c
 
 .if ${COMPILER_TYPE} == "gcc"
 WARNS?=			3

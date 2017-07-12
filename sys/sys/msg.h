@@ -117,9 +117,6 @@ struct mymsg {
 
 #ifdef _KERNEL
 
-#include <sys/msgid.h>
-#include <sys/uuid.h>
-
 struct msg {
 	struct	msg *msg_next;  /* next msg in the chain */
 	long	msg_type; 	/* type of this message */
@@ -128,7 +125,6 @@ struct msg {
 	u_short	msg_ts;		/* size of this message */
 	short	msg_spot;	/* location of start of msg in buffer */
 	struct	label *label;	/* MAC Framework label */
-	msgid_t	msgid;		/* Audit message ID */
 };
 
 /*
@@ -165,7 +161,6 @@ struct msqid_kernel {
 	 */
 	struct	label *label;	/* MAC label */
 	struct	ucred *cred;	/* creator's credentials */
-	struct	uuid uuid;
 };
 
 #endif /* _KERNEL */
@@ -174,8 +169,7 @@ struct msqid_kernel {
 __BEGIN_DECLS
 int msgctl(int, int, struct msqid_ds *);
 int msgget(key_t, int);
-/* XXX return value should be ssize_t. */
-int msgrcv(int, void *, size_t, long, int);
+ssize_t msgrcv(int, void *, size_t, long, int);
 int msgsnd(int, const void *, size_t, int);
 #if __BSD_VISIBLE
 int msgsys(int, ...);

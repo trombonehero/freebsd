@@ -25,10 +25,8 @@
 #define _SYS_PIPE_H_
 
 #ifndef _KERNEL
-#error "no user-servicable parts inside"
+#error "no user-serviceable parts inside"
 #endif
-
-#include <sys/uuid.h>
 
 /*
  * Pipe buffer size, keep moderate in value, pipes take kva space.
@@ -118,7 +116,6 @@ struct pipe {
 	int	pipe_present;		/* still present? */
 	int	pipe_wgen;		/* writer generation for named pipe */
 	ino_t	pipe_ino;		/* fake inode for stat(2) */
-	struct uuid	pipe_uuid;	/* per-endpoint UUID */
 };
 
 /*

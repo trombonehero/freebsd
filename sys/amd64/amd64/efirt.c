@@ -45,6 +45,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/sched.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/vmmeter.h>
+#include <isa/rtc.h>
 #include <machine/fpu.h>
 #include <machine/efi.h>
 #include <machine/metadata.h>
@@ -355,14 +357,14 @@ efi_init(void)
 	if (efi_systbl_phys == 0) {
 		if (bootverbose)
 			printf("EFI systbl not available\n");
-		return (ENXIO);
+		return (0);
 	}
 	efi_systbl = (struct efi_systbl *)PHYS_TO_DMAP(efi_systbl_phys);
 	if (efi_systbl->st_hdr.th_sig != EFI_SYSTBL_SIG) {
 		efi_systbl = NULL;
 		if (bootverbose)
 			printf("EFI systbl signature invalid\n");
-		return (ENXIO);
+		return (0);
 	}
 	efi_cfgtbl = (efi_systbl->st_cfgtbl == 0) ? NULL :
 	    (struct efi_cfgtbl *)efi_systbl->st_cfgtbl;
@@ -379,7 +381,7 @@ efi_init(void)
 	if (efihdr == NULL) {
 		if (bootverbose)
 			printf("EFI map is not present\n");
-		return (ENXIO);
+		return (0);
 	}
 	efisz = (sizeof(struct efi_map_header) + 0xf) & ~0xf;
 	map = (struct efi_md *)((uint8_t *)efihdr + efisz);
@@ -444,7 +446,7 @@ efi_get_time_locked(struct efi_tm *tm)
 	efi_status status;
 	int error;
 
-	mtx_assert(&resettodr_lock, MA_OWNED);
+	mtx_assert(&atrtc_time_lock, MA_OWNED);
 	error = efi_enter();
 	if (error != 0)
 		return (error);
@@ -461,9 +463,9 @@ efi_get_time(struct efi_tm *tm)
 
 	if (efi_runtime == NULL)
 		return (ENXIO);
-	mtx_lock(&resettodr_lock);
+	mtx_lock(&atrtc_time_lock);
 	error = efi_get_time_locked(tm);
-	mtx_unlock(&resettodr_lock);
+	mtx_unlock(&atrtc_time_lock);
 	return (error);
 }
 
@@ -486,7 +488,7 @@ efi_set_time_locked(struct efi_tm *tm)
 	efi_status status;
 	int error;
 
-	mtx_assert(&resettodr_lock, MA_OWNED);
+	mtx_assert(&atrtc_time_lock, MA_OWNED);
 	error = efi_enter();
 	if (error != 0)
 		return (error);
@@ -503,9 +505,9 @@ efi_set_time(struct efi_tm *tm)
 
 	if (efi_runtime == NULL)
 		return (ENXIO);
-	mtx_lock(&resettodr_lock);
+	mtx_lock(&atrtc_time_lock);
 	error = efi_set_time_locked(tm);
-	mtx_unlock(&resettodr_lock);
+	mtx_unlock(&atrtc_time_lock);
 	return (error);
 }
 
@@ -563,7 +565,6 @@ efirt_modevents(module_t m, int event, void *arg __unused)
 	switch (event) {
 	case MOD_LOAD:
 		return (efi_init());
-		break;
 
 	case MOD_UNLOAD:
 		efi_uninit();

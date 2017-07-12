@@ -180,27 +180,15 @@ ${PROGNAME}.debug: ${PROG_FULL}
 .endif
 
 .if defined(LLVM_LINK)
+# LLVM bitcode / textual IR representations of the program
+BCOBJS=	${OBJS:.o=.bco}
+LLOBJS=	${OBJS:.o=.llo}
 
 ${PROG_FULL}.bc: ${BCOBJS}
 	${LLVM_LINK} -o ${.TARGET} ${BCOBJS}
 
 ${PROG_FULL}.ll: ${LLOBJS}
 	${LLVM_LINK} -S -o ${.TARGET} ${LLOBJS}
-
-${PROG_INSTR}.bc: ${PROG_FULL}.bc
-	${OPT} ${LLVM_INSTR_FLAGS} -o ${.TARGET} ${PROG_FULL}.bc
-
-${PROG_INSTR}.ll: ${PROG_FULL}.ll
-	${OPT} -S ${LLVM_INSTR_FLAGS} -o ${.TARGET} ${PROG_FULL}.ll
-
-${PROG_INSTR}: ${PROG_INSTR_IR} ${EXPLICIT_OBJS} ${NON_IR_OBJS}
-.if defined(PROG_CXX)
-	${CXX:N${CCACHE_BIN}} ${OPT_CXXFLAGS} ${LDFLAGS} -o ${.TARGET} \
-	    ${PROG_INSTR_IR} ${EXPLICIT_OBJS} ${NON_IR_OBJS} ${LDADD} ${LLVM_INSTR_LDADD}
-.else
-	${CC:N${CCACHE_BIN}} ${OPT_CFLAGS} ${LDFLAGS} -o ${.TARGET} \
-	    ${PROG_INSTR_IR} ${EXPLICIT_OBJS} ${NON_IR_OBJS} ${LDADD} ${LLVM_INSTR_LDADD}
-.endif
 
 .endif # defined(LLVM_LINK)
 
@@ -223,15 +211,13 @@ all: all-man
 .endif
 
 .if defined(PROG)
-CLEANFILES+= ${PROG} ${PROG}.bc ${PROG}.ll ${PROG_INSTR} ${PROG_INSTR_IR}
+CLEANFILES+= ${PROG} ${PROG}.bc ${PROG}.ll
 .if ${MK_DEBUG_FILES} != "no"
-CLEANFILES+=	${PROG_FULL} ${PROG_FULL}.bc ${PROGNAME}.debug ${PROG_FULL}.ll
+CLEANFILES+= ${PROG_FULL} ${PROG_FULL}.bc ${PROGNAME}.debug ${PROG_FULL}.ll
 .endif
 .endif
 
 .if defined(OBJS)
-BCOBJS?= ${OBJS:.o=.bco} ${OBJS:.o=.bcinstro}
-LLOBJS?= ${OBJS:.o=.llo} ${OBJS:.o=.llinstro}
 CLEANFILES+= ${OBJS} ${BCOBJS} ${LLOBJS}
 .endif
 

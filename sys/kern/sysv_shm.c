@@ -283,7 +283,7 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 		return (EINVAL);
 	shmmap_s->shmid = -1;
 	shmseg->u.shm_dtime = time_second;
-	if ((--shmseg->u.shm_nattch <= 0) &&
+	if (--shmseg->u.shm_nattch == 0 &&
 	    (shmseg->u.shm_perm.mode & SHMSEG_REMOVED)) {
 		shm_deallocate_segment(shmseg);
 		shm_last_free = segnum;
@@ -297,7 +297,7 @@ shm_remove(struct shmid_kernel *shmseg, int segnum)
 
 	shmseg->u.shm_perm.key = IPC_PRIVATE;
 	shmseg->u.shm_perm.mode |= SHMSEG_REMOVED;
-	if (shmseg->u.shm_nattch <= 0) {
+	if (shmseg->u.shm_nattch == 0) {
 		shm_deallocate_segment(shmseg);
 		shm_last_free = segnum;
 	}
@@ -356,9 +356,6 @@ kern_shmdt_locked(struct thread *td, const void *shmaddr)
 		return (EINVAL);
 #if (defined(AUDIT) && defined(KDTRACE_HOOKS)) || defined(MAC)
 	shmsegptr = &shmsegs[IPCID_TO_IX(shmmap_s->shmid)];
-#endif
-#ifdef KDTRACE_HOOKS
-	AUDIT_ARG_OBJUUID1(&shmsegptr->uuid);
 #endif
 #ifdef MAC
 	error = mac_sysvshm_check_shmdt(td->td_ucred, shmsegptr);

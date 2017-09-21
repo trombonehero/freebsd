@@ -67,7 +67,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/resourcevar.h>
 #include <sys/sbuf.h>
 #include <sys/signalvar.h>
-#include <sys/socketvar.h>
 #include <sys/kdb.h>
 #include <sys/stat.h>
 #include <sys/sx.h>
@@ -98,8 +97,8 @@ MALLOC_DEFINE(M_FILECAPS, "filecaps", "descriptor capabilities");
 
 MALLOC_DECLARE(M_FADVISE);
 
-static uma_zone_t file_zone;
-static uma_zone_t filedesc0_zone;
+static __read_mostly uma_zone_t file_zone;
+static __read_mostly uma_zone_t filedesc0_zone;
 
 static int	closefp(struct filedesc *fdp, int fd, struct file *fp,
 		    struct thread *td, int holdleaders);
@@ -169,9 +168,9 @@ struct filedesc0 {
 /*
  * Descriptor management.
  */
-volatile int openfiles;			/* actual number of open files */
+volatile int __exclusive_cache_line openfiles; /* actual number of open files */
 struct mtx sigio_lock;		/* mtx to protect pointers to sigio */
-void (*mq_fdclose)(struct thread *td, int fd, struct file *fp);
+void __read_mostly (*mq_fdclose)(struct thread *td, int fd, struct file *fp);
 
 /*
  * If low >= size, just return low. Otherwise find the first zero bit in the
@@ -918,6 +917,9 @@ kern_dup(struct thread *td, u_int mode, int flags, int old, int new)
 	seq_write_end(&newfde->fde_seq);
 #endif
 	td->td_retval[0] = new;
+#ifdef KDTRACE_HOOKS
+	AUDIT_RET_FD1(new);
+#endif
 
 	error = 0;
 
@@ -1305,6 +1307,24 @@ ofstat(struct thread *td, struct ofstat_args *uap)
 }
 #endif /* COMPAT_43 */
 
+#if defined(COMPAT_FREEBSD11)
+int
+freebsd11_fstat(struct thread *td, struct freebsd11_fstat_args *uap)
+{
+	struct stat sb;
+	struct freebsd11_stat osb;
+	int error;
+
+	error = kern_fstat(td, uap->fd, &sb);
+	if (error != 0)
+		return (error);
+	error = freebsd11_cvtstat(&sb, &osb);
+	if (error == 0)
+		error = copyout(&osb, uap->sb, sizeof(osb));
+	return (error);
+}
+#endif	/* COMPAT_FREEBSD11 */
+
 /*
  * Return status information about a file descriptor.
  */
@@ -1344,6 +1364,14 @@ kern_fstat(struct thread *td, int fd, struct stat *sbp)
 
 	error = fo_stat(fp, sbp, td->td_ucred, td);
 	fdrop(fp, td);
+#ifdef __STAT_TIME_T_EXT
+	if (error == 0) {
+		sbp->st_atim_ext = 0;
+		sbp->st_mtim_ext = 0;
+		sbp->st_ctim_ext = 0;
+		sbp->st_btim_ext = 0;
+	}
+#endif
 #ifdef KTRACE
 	if (error == 0 && KTRPOINT(td, KTR_STRUCT))
 		ktrstat(sbp);
@@ -1351,18 +1379,19 @@ kern_fstat(struct thread *td, int fd, struct stat *sbp)
 	return (error);
 }
 
+#if defined(COMPAT_FREEBSD11)
 /*
  * Return status information about a file descriptor.
  */
 #ifndef _SYS_SYSPROTO_H_
-struct nfstat_args {
+struct freebsd11_nfstat_args {
 	int	fd;
 	struct	nstat *sb;
 };
 #endif
 /* ARGSUSED */
 int
-sys_nfstat(struct thread *td, struct nfstat_args *uap)
+freebsd11_nfstat(struct thread *td, struct freebsd11_nfstat_args *uap)
 {
 	struct nstat nub;
 	struct stat ub;
@@ -1370,11 +1399,12 @@ sys_nfstat(struct thread *td, struct nfstat_args *uap)
 
 	error = kern_fstat(td, uap->fd, &ub);
 	if (error == 0) {
-		cvtnstat(&ub, &nub);
+		freebsd11_cvtnstat(&ub, &nub);
 		error = copyout(&nub, uap->sb, sizeof(nub));
 	}
 	return (error);
 }
+#endif /* COMPAT_FREEBSD11 */
 
 /*
  * Return pathconf information about a file descriptor.
@@ -2570,8 +2600,8 @@ fget_unlocked(struct filedesc *fdp, int fd, cap_rights_t *needrightsp,
 		if (error != 0)
 			return (error);
 #endif
-	retry:
 		count = fp->f_count;
+	retry:
 		if (count == 0) {
 			/*
 			 * Force a reload. Other thread could reallocate the
@@ -2585,7 +2615,7 @@ fget_unlocked(struct filedesc *fdp, int fd, cap_rights_t *needrightsp,
 		 * Use an acquire barrier to force re-reading of fdt so it is
 		 * refreshed for verification.
 		 */
-		if (atomic_cmpset_acq_int(&fp->f_count, count, count + 1) == 0)
+		if (atomic_fcmpset_acq_int(&fp->f_count, &count, count + 1) == 0)
 			goto retry;
 		fdt = fdp->fd_files;
 #ifdef	CAPABILITIES
@@ -2838,61 +2868,6 @@ fgetvp_write(struct thread *td, int fd, cap_rights_t *rightsp,
 	return (_fgetvp(td, fd, FWRITE, rightsp, vpp));
 }
 #endif
-
-/*
- * Like fget() but loads the underlying socket, or returns an error if the
- * descriptor does not represent a socket.
- *
- * We bump the ref count on the returned socket.  XXX Also obtain the SX lock
- * in the future.
- *
- * Note: fgetsock() and fputsock() are deprecated, as consumers should rely
- * on their file descriptor reference to prevent the socket from being free'd
- * during use.
- */
-int
-fgetsock(struct thread *td, int fd, cap_rights_t *rightsp, struct socket **spp,
-    u_int *fflagp)
-{
-	struct file *fp;
-	int error;
-
-	*spp = NULL;
-	if (fflagp != NULL)
-		*fflagp = 0;
-	if ((error = _fget(td, fd, &fp, 0, rightsp, NULL)) != 0)
-		return (error);
-	if (fp->f_type != DTYPE_SOCKET) {
-		error = ENOTSOCK;
-	} else {
-		*spp = fp->f_data;
-		if (fflagp)
-			*fflagp = fp->f_flag;
-		SOCK_LOCK(*spp);
-		soref(*spp);
-		SOCK_UNLOCK(*spp);
-	}
-	fdrop(fp, td);
-
-	return (error);
-}
-
-/*
- * Drop the reference count on the socket and XXX release the SX lock in the
- * future.  The last reference closes the socket.
- *
- * Note: fputsock() is deprecated, see comment for fgetsock().
- */
-void
-fputsock(struct socket *so)
-{
-
-	ACCEPT_LOCK();
-	SOCK_LOCK(so);
-	CURVNET_SET(so->so_vnet);
-	sorele(so);
-	CURVNET_RESTORE();
-}
 
 /*
  * Handle the last reference to a file being closed.
@@ -3629,11 +3604,11 @@ sysctl_kern_proc_filedesc(SYSCTL_HANDLER_ARGS)
 	return (error != 0 ? error : error2);
 }
 
+#ifdef COMPAT_FREEBSD7
 #ifdef KINFO_OFILE_SIZE
 CTASSERT(sizeof(struct kinfo_ofile) == KINFO_OFILE_SIZE);
 #endif
 
-#ifdef COMPAT_FREEBSD7
 static void
 kinfo_to_okinfo(struct kinfo_file *kif, struct kinfo_ofile *okif)
 {
@@ -3646,13 +3621,21 @@ kinfo_to_okinfo(struct kinfo_file *kif, struct kinfo_ofile *okif)
 	    KF_FLAG_APPEND | KF_FLAG_ASYNC | KF_FLAG_FSYNC | KF_FLAG_NONBLOCK |
 	    KF_FLAG_DIRECT | KF_FLAG_HASLOCK);
 	okif->kf_offset = kif->kf_offset;
-	okif->kf_vnode_type = kif->kf_vnode_type;
-	okif->kf_sock_domain = kif->kf_sock_domain;
-	okif->kf_sock_type = kif->kf_sock_type;
-	okif->kf_sock_protocol = kif->kf_sock_protocol;
+	if (kif->kf_type == KF_TYPE_VNODE)
+		okif->kf_vnode_type = kif->kf_un.kf_file.kf_file_type;
+	else
+		okif->kf_vnode_type = KF_VTYPE_VNON;
 	strlcpy(okif->kf_path, kif->kf_path, sizeof(okif->kf_path));
-	okif->kf_sa_local = kif->kf_sa_local;
-	okif->kf_sa_peer = kif->kf_sa_peer;
+	if (kif->kf_type == KF_TYPE_SOCKET) {
+		okif->kf_sock_domain = kif->kf_un.kf_sock.kf_sock_domain0;
+		okif->kf_sock_type = kif->kf_un.kf_sock.kf_sock_type0;
+		okif->kf_sock_protocol = kif->kf_un.kf_sock.kf_sock_protocol0;
+		okif->kf_sa_local = kif->kf_un.kf_sock.kf_sa_local;
+		okif->kf_sa_peer = kif->kf_un.kf_sock.kf_sa_peer;
+	} else {
+		okif->kf_sa_local.ss_family = AF_UNSPEC;
+		okif->kf_sa_peer.ss_family = AF_UNSPEC;
+	}
 }
 
 static int
@@ -3841,23 +3824,33 @@ file_type_to_name(short type)
 	case 0:
 		return ("zero");
 	case DTYPE_VNODE:
-		return ("vnod");
+		return ("vnode");
 	case DTYPE_SOCKET:
-		return ("sock");
+		return ("socket");
 	case DTYPE_PIPE:
 		return ("pipe");
 	case DTYPE_FIFO:
 		return ("fifo");
 	case DTYPE_KQUEUE:
-		return ("kque");
+		return ("kqueue");
 	case DTYPE_CRYPTO:
-		return ("crpt");
+		return ("crypto");
 	case DTYPE_MQUEUE:
-		return ("mque");
+		return ("mqueue");
 	case DTYPE_SHM:
 		return ("shm");
 	case DTYPE_SEM:
 		return ("ksem");
+	case DTYPE_PTS:
+		return ("pts");
+	case DTYPE_DEV:
+		return ("dev");
+	case DTYPE_PROCDESC:
+		return ("proc");
+	case DTYPE_LINUXEFD:
+		return ("levent");
+	case DTYPE_LINUXTFD:
+		return ("ltimer");
 	default:
 		return ("unkn");
 	}
@@ -3892,17 +3885,21 @@ file_to_first_proc(struct file *fp)
 static void
 db_print_file(struct file *fp, int header)
 {
+#define XPTRWIDTH ((int)howmany(sizeof(void *) * NBBY, 4))
 	struct proc *p;
 
 	if (header)
-		db_printf("%8s %4s %8s %8s %4s %5s %6s %8s %5s %12s\n",
-		    "File", "Type", "Data", "Flag", "GCFl", "Count",
-		    "MCount", "Vnode", "FPID", "FCmd");
+		db_printf("%*s %6s %*s %8s %4s %5s %6s %*s %5s %s\n",
+		    XPTRWIDTH, "File", "Type", XPTRWIDTH, "Data", "Flag",
+		    "GCFl", "Count", "MCount", XPTRWIDTH, "Vnode", "FPID",
+		    "FCmd");
 	p = file_to_first_proc(fp);
-	db_printf("%8p %4s %8p %08x %04x %5d %6d %8p %5d %12s\n", fp,
-	    file_type_to_name(fp->f_type), fp->f_data, fp->f_flag,
-	    0, fp->f_count, 0, fp->f_vnode,
+	db_printf("%*p %6s %*p %08x %04x %5d %6d %*p %5d %s\n", XPTRWIDTH,
+	    fp, file_type_to_name(fp->f_type), XPTRWIDTH, fp->f_data,
+	    fp->f_flag, 0, fp->f_count, 0, XPTRWIDTH, fp->f_vnode,
 	    p != NULL ? p->p_pid : -1, p != NULL ? p->p_comm : "-");
+
+#undef XPTRWIDTH
 }
 
 DB_SHOW_COMMAND(file, db_show_file)
@@ -3966,7 +3963,15 @@ SYSINIT(select, SI_SUB_LOCK, SI_ORDER_FIRST, filelistinit, NULL);
 /*-------------------------------------------------------------------*/
 
 static int
-badfo_readwrite(struct file *fp, struct uio *uio, struct ucred *active_cred,
+badfo_read(struct file *fp, struct uio *uio, struct ucred *active_cred,
+    int flags, struct thread *td, struct metaio *miop)
+{
+
+	return (EBADF);
+}
+
+static int
+badfo_write(struct file *fp, struct uio *uio, struct ucred *active_cred,
     int flags, struct thread *td)
 {
 
@@ -4052,8 +4057,8 @@ badfo_fill_kinfo(struct file *fp, struct kinfo_file *kif, struct filedesc *fdp)
 }
 
 struct fileops badfileops = {
-	.fo_read = badfo_readwrite,
-	.fo_write = badfo_readwrite,
+	.fo_read = badfo_read,
+	.fo_write = badfo_write,
 	.fo_truncate = badfo_truncate,
 	.fo_ioctl = badfo_ioctl,
 	.fo_poll = badfo_poll,
@@ -4067,7 +4072,15 @@ struct fileops badfileops = {
 };
 
 int
-invfo_rdwr(struct file *fp, struct uio *uio, struct ucred *active_cred,
+invfo_read(struct file *fp, struct uio *uio, struct ucred *active_cred,
+    int flags, struct thread *td, struct metaio *miop)
+{
+
+	return (EOPNOTSUPP);
+}
+
+int
+invfo_write(struct file *fp, struct uio *uio, struct ucred *active_cred,
     int flags, struct thread *td)
 {
 

@@ -99,7 +99,7 @@ void mi_startup(void);				/* Should be elsewhere */
 static struct session session0;
 static struct pgrp pgrp0;
 struct	proc proc0;
-struct thread0_storage thread0_st __aligned(16);
+struct thread0_storage thread0_st __aligned(32);
 struct	vmspace vmspace0;
 struct	proc *initproc;
 
@@ -360,8 +360,7 @@ SYSINIT(diagwarn2, SI_SUB_LAST, SI_ORDER_THIRD + 2,
 #endif
 
 static int
-null_fetch_syscall_args(struct thread *td __unused,
-    struct syscall_args *sa __unused)
+null_fetch_syscall_args(struct thread *td __unused)
 {
 
 	panic("null_fetch_syscall_args");
@@ -471,6 +470,13 @@ proc0_init(void *dummy __unused)
 	p->p_nice = NZERO;
 	/* pid_max cannot be greater than PID_MAX */
 	td->td_tid = PID_MAX + 1;
+
+	/*
+	 * XXXRW: Initial thread UUID -- will this be sufficiently unique so
+	 * early in the boot?  Or does it even work at all, so early?
+	 */
+	(void)kern_uuidgen(&td->td_uuid, 1);
+
 	LIST_INSERT_HEAD(TIDHASH(td->td_tid), td, td_hash);
 	td->td_state = TDS_RUNNING;
 	td->td_pri_class = PRI_TIMESHARE;

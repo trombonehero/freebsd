@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -44,6 +44,7 @@
  */
 struct	nfsmount {
 	struct	nfsmount_common nm_com;	/* Common fields for nlm */
+	uint32_t nm_privflag;		/* Private flags */
 	int	nm_numgrps;		/* Max. size of groupslist */
 	u_char	nm_fh[NFSX_FHMAX];	/* File handle of root dir */
 	int	nm_fhsize;		/* Size of root file handle */
@@ -98,6 +99,10 @@ struct	nfsmount {
 #define	nm_hostname	nm_com.nmcom_hostname
 #define	nm_getinfo	nm_com.nmcom_getinfo
 #define	nm_vinvalbuf	nm_com.nmcom_vinvalbuf
+
+/* Private flags. */
+#define	NFSMNTP_FORCEDISM	0x00000001
+#define	NFSMNTP_CANCELRPCS	0x00000002
 
 #define	NFSMNT_DIRPATH(m)	(&((m)->nm_name[(m)->nm_krbnamelen + 1]))
 #define	NFSMNT_SRVKRBNAME(m)						\

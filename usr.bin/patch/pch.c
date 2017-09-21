@@ -56,7 +56,7 @@ static LINENUM	p_max;		/* max allowed value of p_end */
 static LINENUM	p_context = 3;	/* # of context lines */
 static LINENUM	p_input_line = 0;	/* current line # from patch file */
 static char	**p_line = NULL;/* the text of the hunk */
-static u_int	*p_len = NULL; /* length of each line */
+static unsigned short	*p_len = NULL; /* length of each line */
 static char	*p_char = NULL;	/* +, -, and ! */
 static int	hunkmax = INITHUNKMAX;	/* size of above arrays to begin with */
 static int	p_indent;	/* indent to patch */
@@ -136,7 +136,7 @@ set_hunkmax(void)
 	if (p_line == NULL)
 		p_line = malloc(hunkmax * sizeof(char *));
 	if (p_len == NULL)
-		p_len = malloc(hunkmax * sizeof(u_int));
+		p_len = malloc(hunkmax * sizeof(unsigned short));
 	if (p_char == NULL)
 		p_char = malloc(hunkmax * sizeof(char));
 }
@@ -153,7 +153,7 @@ grow_hunkmax(void)
 		fatal("Internal memory allocation error\n");
 
 	p_line = reallocf(p_line, new_hunkmax * sizeof(char *));
-	p_len = reallocf(p_len, new_hunkmax * sizeof(u_int));
+	p_len = reallocf(p_len, new_hunkmax * sizeof(unsigned short));
 	p_char = reallocf(p_char, new_hunkmax * sizeof(char));
 
 	if (p_line != NULL && p_len != NULL && p_char != NULL) {
@@ -216,8 +216,10 @@ there_is_another_patch(void)
 			filearg[0] = fetchname(buf, &exists, 0);
 		}
 		if (!exists) {
-			ask("No file found--skip this patch? [n] ");
-			if (*buf != 'y')
+			int def_skip = *bestguess == '\0';
+			ask("No file found--skip this patch? [%c] ",
+			    def_skip  ? 'y' : 'n');
+			if (*buf == 'n' || (!def_skip && *buf != 'y'))
 				continue;
 			if (verbose)
 				say("Skipping patch...\n");
@@ -262,6 +264,7 @@ intuit_diff_type(void)
 	char	*s, *t;
 	int	indent, retval;
 	struct file_name names[MAX_FILE];
+	int	piece_of_git = 0;
 
 	memset(names, 0, sizeof(names));
 	ok_to_create_file = false;
@@ -306,14 +309,20 @@ intuit_diff_type(void)
 		if (!stars_last_line && strnEQ(s, "*** ", 4))
 			names[OLD_FILE].path = fetchname(s + 4,
 			    &names[OLD_FILE].exists, strippath);
-		else if (strnEQ(s, "--- ", 4))
-			names[NEW_FILE].path = fetchname(s + 4,
+		else if (strnEQ(s, "--- ", 4)) {
+			size_t off = 4;
+			if (piece_of_git && strippath == 957)
+				off = 6;
+			names[NEW_FILE].path = fetchname(s + off,
 			    &names[NEW_FILE].exists, strippath);
-		else if (strnEQ(s, "+++ ", 4))
+		} else if (strnEQ(s, "+++ ", 4)) {
 			/* pretend it is the old name */
-			names[OLD_FILE].path = fetchname(s + 4,
+			size_t off = 4;
+			if (piece_of_git && strippath == 957)
+				off = 6;
+			names[OLD_FILE].path = fetchname(s + off,
 			    &names[OLD_FILE].exists, strippath);
-		else if (strnEQ(s, "Index:", 6))
+		} else if (strnEQ(s, "Index:", 6))
 			names[INDEX_FILE].path = fetchname(s + 6,
 			    &names[INDEX_FILE].exists, strippath);
 		else if (strnEQ(s, "Prereq:", 7)) {
@@ -328,6 +337,9 @@ intuit_diff_type(void)
 				free(revision);
 				revision = NULL;
 			}
+		} else if (strnEQ(s, "diff --git a/", 13)) {
+			/* Git-style diffs. */
+			piece_of_git = 1;
 		} else if (strnEQ(s, "==== ", 5)) {
 			/* Perforce-style diffs. */
 			if ((t = strstr(s + 5, " - ")) != NULL)
@@ -1210,7 +1222,7 @@ bool
 pch_swap(void)
 {
 	char	**tp_line;	/* the text of the hunk */
-	u_int	*tp_len;	/* length of each line */
+	unsigned short	*tp_len;/* length of each line */
 	char	*tp_char;	/* +, -, and ! */
 	LINENUM	i;
 	LINENUM	n;
@@ -1367,7 +1379,7 @@ pch_context(void)
 /*
  * Return the length of a particular patch line.
  */
-u_int
+unsigned short
 pch_line_len(LINENUM line)
 {
 	return p_len[line];

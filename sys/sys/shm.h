@@ -106,6 +106,7 @@ struct shmid_ds {
 };
 
 #ifdef _KERNEL
+#include <sys/uuid.h>
 #include <vm/vm.h>
 
 /*
@@ -129,6 +130,7 @@ struct shmid_kernel {
 	vm_object_t object;
 	struct label *label;	/* MAC label */
 	struct ucred *cred;	/* creator's credendials */
+	struct uuid uuid;
 };
 
 extern struct shminfo	shminfo;

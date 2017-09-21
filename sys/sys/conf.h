@@ -17,7 +17,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -45,6 +45,7 @@
 #else
 #include <sys/queue.h>
 #endif
+#include <sys/uuid.h>
 
 struct snapdata;
 struct devfs_dirent;
@@ -87,6 +88,7 @@ struct cdev {
 		struct snapdata *__sid_snapdata;
 	} __si_u;
 	char		si_name[SPECNAMELEN + 1];
+	struct uuid	si_uuid;
 };
 
 #define	si_snapdata	__si_u.__sid_snapdata
@@ -315,6 +317,7 @@ void	devfs_free_cdp_inode(ino_t ino);
 #define		GID_GAMES	13
 #define		GID_VIDEO	44
 #define		GID_DIALER	68
+#define		GID_NOGROUP	65533
 #define		GID_NOBODY	65534
 
 typedef void (*dev_clone_fn)(void *arg, struct ucred *cred, char *name,

@@ -1,6 +1,7 @@
 # $FreeBSD$
 
 .include <src.opts.mk>
+MK_INSTRUMENT_BINARIES=	no
 
 FILES=		ubldr ubldr.bin
 
@@ -14,6 +15,10 @@ UBLDR_LOADADDR?=	0x1000000
 
 # Architecture-specific loader code
 SRCS=		start.S conf.c self_reloc.c vers.c
+
+.if ${COMPILER_TYPE} == "gcc" && ${COMPILER_VERSION} > 40201
+CWARNFLAGS.self_reloc.c+=	-Wno-error=maybe-uninitialized
+.endif
 
 .if !defined(LOADER_NO_DISK_SUPPORT)
 LOADER_DISK_SUPPORT?=	yes
@@ -80,7 +85,8 @@ LIBFDT=		${.OBJDIR}/../../fdt/libfdt.a
 .if ${MK_FORTH} != "no"
 # Enable BootForth
 BOOT_FORTH=	yes
-CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/arm
+CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl
+CFLAGS+=	-I${.CURDIR}/../../ficl/arm
 LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
 .endif
 
@@ -95,6 +101,7 @@ CLEANFILES+=	loader.help
 CFLAGS+=	-ffreestanding -msoft-float
 
 LDFLAGS=	-nostdlib -static -T ${.CURDIR}/ldscript.${MACHINE_CPUARCH}
+LDFLAGS+=	-Wl,-znotext
 
 # Pull in common loader code
 .PATH:		${.CURDIR}/../../uboot/common

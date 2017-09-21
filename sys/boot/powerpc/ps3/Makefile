@@ -1,6 +1,7 @@
 # $FreeBSD$
 
 .include <src.opts.mk>
+MK_INSTRUMENT_BINARIES=	no
 MK_SSP=		no
 MAN=
 
@@ -64,7 +65,8 @@ LIBFDT=		${.OBJDIR}/../../fdt/libfdt.a
 .if ${MK_FORTH} != "no"
 # Enable BootForth
 BOOT_FORTH=	yes
-CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/powerpc
+CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl
+CFLAGS+=	-I${.CURDIR}/../../ficl/powerpc
 LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
 .endif
 

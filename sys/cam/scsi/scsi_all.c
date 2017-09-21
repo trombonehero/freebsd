@@ -35,7 +35,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/stdint.h>
 
 #ifdef _KERNEL
-#include <opt_scsi.h>
+#include "opt_scsi.h"
 
 #include <sys/systm.h>
 #include <sys/libkern.h>
@@ -1371,7 +1371,7 @@ static struct asc_table_entry asc_table[] = {
 	{ SST(0x0E, 0x02, SS_RDEF,	/* XXX TBD */
 	    "Information unit too long") },
 	/* DT P R MAEBK F */
-	{ SST(0x0E, 0x03, SS_RDEF,	/* XXX TBD */
+	{ SST(0x0E, 0x03, SS_FATAL | EINVAL,
 	    "Invalid field in command information unit") },
 	/* D   W O   BK   */
 	{ SST(0x10, 0x00, SS_RDEF,
@@ -1614,7 +1614,7 @@ static struct asc_table_entry asc_table[] = {
 	{ SST(0x20, 0x01, SS_RDEF,	/* XXX TBD */
 	    "Access denied - initiator pending-enrolled") },
 	/* DT PWROMAEBK   */
-	{ SST(0x20, 0x02, SS_RDEF,	/* XXX TBD */
+	{ SST(0x20, 0x02, SS_FATAL | EPERM,
 	    "Access denied - no access rights") },
 	/* DT PWROMAEBK   */
 	{ SST(0x20, 0x03, SS_RDEF,	/* XXX TBD */
@@ -3617,15 +3617,9 @@ scsi_command_string(struct cam_device *device, struct ccb_scsiio *csio,
 
 #endif /* _KERNEL/!_KERNEL */
 
-	if ((csio->ccb_h.flags & CAM_CDB_POINTER) != 0) {
-		sbuf_printf(sb, "%s. CDB: ", 
-			    scsi_op_desc(csio->cdb_io.cdb_ptr[0], inq_data));
-		scsi_cdb_sbuf(csio->cdb_io.cdb_ptr, sb);
-	} else {
-		sbuf_printf(sb, "%s. CDB: ",
-			    scsi_op_desc(csio->cdb_io.cdb_bytes[0], inq_data));
-		scsi_cdb_sbuf(csio->cdb_io.cdb_bytes, sb);
-	}
+	sbuf_printf(sb, "%s. CDB: ",
+		    scsi_op_desc(scsiio_cdb_ptr(csio)[0], inq_data));
+	scsi_cdb_sbuf(scsiio_cdb_ptr(csio), sb);
 
 #ifdef _KERNEL
 	xpt_free_ccb((union ccb *)cgd);
@@ -5030,7 +5024,6 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 	struct	  ccb_getdev *cgd;
 #endif /* _KERNEL */
 	char	  path_str[64];
-	uint8_t	  *cdb;
 
 #ifndef _KERNEL
 	if (device == NULL)
@@ -5128,14 +5121,9 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 			sense = &csio->sense_data;
 	}
 
-	if (csio->ccb_h.flags & CAM_CDB_POINTER)
-		cdb = csio->cdb_io.cdb_ptr;
-	else
-		cdb = csio->cdb_io.cdb_bytes;
-
 	scsi_sense_only_sbuf(sense, csio->sense_len - csio->sense_resid, sb,
-			     path_str, inq_data, cdb, csio->cdb_len);
-			 
+	    path_str, inq_data, scsiio_cdb_ptr(csio), csio->cdb_len);
+
 #ifdef _KERNEL
 	xpt_free_ccb((union ccb*)cgd);
 #endif /* _KERNEL/!_KERNEL */
@@ -5181,7 +5169,7 @@ scsi_sense_print(struct ccb_scsiio *csio)
 
 	sbuf_finish(&sb);
 
-	printf("%s", sbuf_data(&sb));
+	sbuf_putbuf(&sb);
 }
 
 #else /* !_KERNEL */
@@ -5373,11 +5361,10 @@ scsi_get_ascq(struct scsi_sense_data *sense_data, u_int sense_len,
  * for this routine to function properly.
  */
 void
-scsi_print_inquiry(struct scsi_inquiry_data *inq_data)
+scsi_print_inquiry_sbuf(struct sbuf *sb, struct scsi_inquiry_data *inq_data)
 {
 	u_int8_t type;
 	char *dtype, *qtype;
-	char vendor[16], product[48], revision[16], rstr[12];
 
 	type = SID_TYPE(inq_data);
 
@@ -5466,41 +5453,55 @@ scsi_print_inquiry(struct scsi_inquiry_data *inq_data)
 		break;
 	}
 
-	cam_strvis(vendor, inq_data->vendor, sizeof(inq_data->vendor),
-		   sizeof(vendor));
-	cam_strvis(product, inq_data->product, sizeof(inq_data->product),
-		   sizeof(product));
-	cam_strvis(revision, inq_data->revision, sizeof(inq_data->revision),
-		   sizeof(revision));
+	scsi_print_inquiry_short_sbuf(sb, inq_data);
+
+	sbuf_printf(sb, "%s %s ", SID_IS_REMOVABLE(inq_data) ? "Removable" : "Fixed", dtype);
 
 	if (SID_ANSI_REV(inq_data) == SCSI_REV_0)
-		snprintf(rstr, sizeof(rstr), "SCSI");
+		sbuf_printf(sb, "SCSI ");
 	else if (SID_ANSI_REV(inq_data) <= SCSI_REV_SPC) {
-		snprintf(rstr, sizeof(rstr), "SCSI-%d",
-		    SID_ANSI_REV(inq_data));
+		sbuf_printf(sb, "SCSI-%d ", SID_ANSI_REV(inq_data));
 	} else {
-		snprintf(rstr, sizeof(rstr), "SPC-%d SCSI",
-		    SID_ANSI_REV(inq_data) - 2);
+		sbuf_printf(sb, "SPC-%d SCSI ", SID_ANSI_REV(inq_data) - 2);
 	}
-	printf("<%s %s %s> %s %s %s device%s\n",
-	       vendor, product, revision,
-	       SID_IS_REMOVABLE(inq_data) ? "Removable" : "Fixed",
-	       dtype, rstr, qtype);
+	sbuf_printf(sb, "device%s\n", qtype);
+}
+
+void
+scsi_print_inquiry(struct scsi_inquiry_data *inq_data)
+{
+	struct sbuf	sb;
+	char		buffer[120];
+
+	sbuf_new(&sb, buffer, 120, SBUF_FIXEDLEN);
+	scsi_print_inquiry_sbuf(&sb, inq_data);
+	sbuf_finish(&sb);
+	sbuf_putbuf(&sb);
+}
+
+void
+scsi_print_inquiry_short_sbuf(struct sbuf *sb, struct scsi_inquiry_data *inq_data)
+{
+
+	sbuf_printf(sb, "<");
+	cam_strvis_sbuf(sb, inq_data->vendor, sizeof(inq_data->vendor), 0);
+	sbuf_printf(sb, " ");
+	cam_strvis_sbuf(sb, inq_data->product, sizeof(inq_data->product), 0);
+	sbuf_printf(sb, " ");
+	cam_strvis_sbuf(sb, inq_data->revision, sizeof(inq_data->revision), 0);
+	sbuf_printf(sb, "> ");
 }
 
 void
 scsi_print_inquiry_short(struct scsi_inquiry_data *inq_data)
 {
-	char vendor[16], product[48], revision[16];
+	struct sbuf	sb;
+	char		buffer[84];
 
-	cam_strvis(vendor, inq_data->vendor, sizeof(inq_data->vendor),
-		   sizeof(vendor));
-	cam_strvis(product, inq_data->product, sizeof(inq_data->product),
-		   sizeof(product));
-	cam_strvis(revision, inq_data->revision, sizeof(inq_data->revision),
-		   sizeof(revision));
-
-	printf("<%s %s %s>", vendor, product, revision);
+	sbuf_new(&sb, buffer, 84, SBUF_FIXEDLEN);
+	scsi_print_inquiry_short_sbuf(&sb, inq_data);
+	sbuf_finish(&sb);
+	sbuf_putbuf(&sb);
 }
 
 /*
@@ -7622,24 +7623,34 @@ scsi_inquiry(struct ccb_scsiio *csio, u_int32_t retries,
 }
 
 void
-scsi_mode_sense(struct ccb_scsiio *csio, u_int32_t retries,
-		void (*cbfcnp)(struct cam_periph *, union ccb *),
-		u_int8_t tag_action, int dbd, u_int8_t page_code,
-		u_int8_t page, u_int8_t *param_buf, u_int32_t param_len,
-		u_int8_t sense_len, u_int32_t timeout)
+scsi_mode_sense(struct ccb_scsiio *csio, uint32_t retries,
+    void (*cbfcnp)(struct cam_periph *, union ccb *), uint8_t tag_action,
+    int dbd, uint8_t pc, uint8_t page, uint8_t *param_buf, uint32_t param_len,
+    uint8_t sense_len, uint32_t timeout)
 {
 
-	scsi_mode_sense_len(csio, retries, cbfcnp, tag_action, dbd,
-			    page_code, page, param_buf, param_len, 0,
-			    sense_len, timeout);
+	scsi_mode_sense_subpage(csio, retries, cbfcnp, tag_action, dbd,
+	    pc, page, 0, param_buf, param_len, 0, sense_len, timeout);
 }
 
 void
-scsi_mode_sense_len(struct ccb_scsiio *csio, u_int32_t retries,
-		    void (*cbfcnp)(struct cam_periph *, union ccb *),
-		    u_int8_t tag_action, int dbd, u_int8_t page_code,
-		    u_int8_t page, u_int8_t *param_buf, u_int32_t param_len,
-		    int minimum_cmd_size, u_int8_t sense_len, u_int32_t timeout)
+scsi_mode_sense_len(struct ccb_scsiio *csio, uint32_t retries,
+    void (*cbfcnp)(struct cam_periph *, union ccb *), uint8_t tag_action,
+    int dbd, uint8_t pc, uint8_t page, uint8_t *param_buf, uint32_t param_len,
+    int minimum_cmd_size, uint8_t sense_len, uint32_t timeout)
+{
+
+	scsi_mode_sense_subpage(csio, retries, cbfcnp, tag_action, dbd,
+	    pc, page, 0, param_buf, param_len, minimum_cmd_size,
+	    sense_len, timeout);
+}
+
+void
+scsi_mode_sense_subpage(struct ccb_scsiio *csio, uint32_t retries,
+    void (*cbfcnp)(struct cam_periph *, union ccb *), uint8_t tag_action,
+    int dbd, uint8_t pc, uint8_t page, uint8_t subpage, uint8_t *param_buf,
+    uint32_t param_len, int minimum_cmd_size, uint8_t sense_len,
+    uint32_t timeout)
 {
 	u_int8_t cdb_len;
 
@@ -7658,7 +7669,8 @@ scsi_mode_sense_len(struct ccb_scsiio *csio, u_int32_t retries,
 		scsi_cmd->opcode = MODE_SENSE_6;
 		if (dbd != 0)
 			scsi_cmd->byte2 |= SMS_DBD;
-		scsi_cmd->page = page_code | page;
+		scsi_cmd->page = pc | page;
+		scsi_cmd->subpage = subpage;
 		scsi_cmd->length = param_len;
 		cdb_len = sizeof(*scsi_cmd);
 	} else {
@@ -7672,7 +7684,8 @@ scsi_mode_sense_len(struct ccb_scsiio *csio, u_int32_t retries,
 		scsi_cmd->opcode = MODE_SENSE_10;
 		if (dbd != 0)
 			scsi_cmd->byte2 |= SMS_DBD;
-		scsi_cmd->page = page_code | page;
+		scsi_cmd->page = pc | page;
+		scsi_cmd->subpage = subpage;
 		scsi_ulto2b(param_len, scsi_cmd->length);
 		cdb_len = sizeof(*scsi_cmd);
 	}

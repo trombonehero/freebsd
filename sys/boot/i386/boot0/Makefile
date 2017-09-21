@@ -1,5 +1,7 @@
 # $FreeBSD$
 
+MK_INSTRUMENT_BINARIES=	no
+
 PROG?=	boot0
 STRIP=
 BINMODE=${NOBINMODE}
@@ -78,6 +80,3 @@ CFLAGS+=-DFLAGS=${BOOT_BOOT0_FLAGS} \
 LDFLAGS=${LDFLAGS_BIN}
 
 .include <bsd.prog.mk>
-
-# XXX: clang integrated-as doesn't grok .codeNN directives yet
-CFLAGS.boot0.S=		${CLANG_NO_IAS}

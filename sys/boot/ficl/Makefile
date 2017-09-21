@@ -1,6 +1,8 @@
 # $FreeBSD$
 #
 
+MK_INSTRUMENT_BINARIES=	no
+
 .include	"${.CURDIR}/../Makefile.ficl"
 
 BASE_SRCS=	dict.c ficl.c fileaccess.c float.c loader.c math64.c \

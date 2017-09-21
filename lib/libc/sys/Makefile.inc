@@ -6,7 +6,7 @@
 
 # Include the generated makefile containing the *complete* list
 # of syscall names in MIASM.
-.include "${LIBC_SRCTOP}/../../sys/sys/syscall.mk"
+.include "${SRCTOP}/sys/sys/syscall.mk"
 
 # Include machine dependent definitions.
 #
@@ -35,9 +35,15 @@ SRCS+=	\
 	__error.c \
 	interposing_table.c
 
-SRCS+= futimens.c utimensat.c
-NOASM+= futimens.o utimensat.o
-PSEUDO+= _futimens.o _utimensat.o
+SRCS+= getdents.c lstat.c mknod.c stat.c
+
+SRCS+= fstat.c fstatat.c fstatfs.c getfsstat.c statfs.c
+NOASM+= fstat.o fstatat.o fstatfs.o getfsstat.o statfs.o
+PSEUDO+= _fstat.o _fstatat.o _fstatfs.o _getfsstat.o _statfs.o
+
+SRCS+= getdirentries.c
+NOASM+= getdirentries.o
+PSEUDO+= _getdirentries.o
 
 SRCS+= pipe.c
 
@@ -45,6 +51,7 @@ INTERPOSED = \
 	accept \
 	accept4 \
 	aio_suspend \
+	clock_nanosleep \
 	close \
 	connect \
 	fcntl \
@@ -197,6 +204,7 @@ MAN+=	abort2.2 \
 	getsockopt.2 \
 	gettimeofday.2 \
 	getuid.2 \
+	getuuid.2 \
 	intro.2 \
 	ioctl.2 \
 	issetugid.2 \
@@ -217,6 +225,7 @@ MAN+=	abort2.2 \
 	listen.2 \
 	lseek.2 \
 	madvise.2 \
+	metaio.2 \
 	mincore.2 \
 	minherit.2 \
 	mkdir.2 \
@@ -347,7 +356,6 @@ MLINKS+=brk.2 sbrk.2
 MLINKS+=cap_enter.2 cap_getmode.2
 MLINKS+=cap_fcntls_limit.2 cap_fcntls_get.2
 MLINKS+=cap_ioctls_limit.2 cap_ioctls_get.2
-MLINKS+=cap_rights_limit.2 cap_rights_get.2
 MLINKS+=chdir.2 fchdir.2
 MLINKS+=chflags.2 chflagsat.2 \
 	chflags.2 fchflags.2 \
@@ -360,6 +368,7 @@ MLINKS+=chown.2 fchown.2 \
 	chown.2 lchown.2
 MLINKS+=clock_gettime.2 clock_getres.2 \
 	clock_gettime.2 clock_settime.2
+MLINKS+=nanosleep.2 clock_nanosleep.2
 MLINKS+=cpuset.2 cpuset_getid.2 \
 	cpuset.2 cpuset_setid.2
 MLINKS+=cpuset_getaffinity.2 cpuset_setaffinity.2
@@ -396,6 +405,8 @@ MLINKS+=getrlimit.2 setrlimit.2
 MLINKS+=getsockopt.2 setsockopt.2
 MLINKS+=gettimeofday.2 settimeofday.2
 MLINKS+=getuid.2 geteuid.2
+MLINKS+=getuuid.2 fgetuuid.2
+MLINKS+=getuuid.2 lgetuuid.2
 MLINKS+=intro.2 errno.2
 MLINKS+=jail.2 jail_attach.2 \
 	jail.2 jail_get.2 \
@@ -406,6 +417,20 @@ MLINKS+=kqueue.2 kevent.2 \
 	kqueue.2 EV_SET.3
 MLINKS+=link.2 linkat.2
 MLINKS+=madvise.2 posix_madvise.2
+MLINKS+=metaio.2 metaio_mmap.2
+MLINKS+=metaio.2 metaio_pread.2
+MLINKS+=metaio.2 metaio_preadv.2
+MLINKS+=metaio.2 metaio_pwrite.2
+MLINKS+=metaio.2 metaio_pwritev.2
+MLINKS+=metaio.2 metaio_read.2
+MLINKS+=metaio.2 metaio_readv.2
+MLINKS+=metaio.2 metaio_recvfrom.2
+MLINKS+=metaio.2 metaio_recvmsg.2
+MLINKS+=metaio.2 metaio_sendfdile.2
+MLINKS+=metaio.2 metaio_sendmsg.2
+MLINKS+=metaio.2 metaio_sendto.2
+MLINKS+=metaio.2 metaio_write.2
+MLINKS+=metaio.2 metaio_writev.2
 MLINKS+=mkdir.2 mkdirat.2
 MLINKS+=mkfifo.2 mkfifoat.2
 MLINKS+=mknod.2 mknodat.2
@@ -422,8 +447,7 @@ MLINKS+=open.2 openat.2
 MLINKS+=pathconf.2 fpathconf.2
 MLINKS+=pathconf.2 lpathconf.2
 MLINKS+=pdfork.2 pdgetpid.2\
-	pdfork.2 pdkill.2 \
-	pdfork.2 pdwait4.2
+	pdfork.2 pdkill.2
 MLINKS+=pipe.2 pipe2.2
 MLINKS+=poll.2 ppoll.2
 MLINKS+=rctl_add_rule.2 rctl_get_limits.2 \

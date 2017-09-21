@@ -169,7 +169,9 @@ LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
 
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)
 OBJS+=		${SRCS:N*.h:R:S/$/.o/}
-CLEANFILES+=	${OBJS} ${STATICOBJS}
+BCOBJS=		${SRCS:N*.[hsS]:N*.asm:R:S/$/.bco/g}
+LLOBJS=		${SRCS:N*.[hsS]:N*.asm:R:S/$/.llo/g}
+CLEANFILES+=	${OBJS} ${BCOBJS} ${LLOBJS} ${STATICOBJS}
 .endif
 
 .if defined(LIB) && !empty(LIB)
@@ -181,6 +183,16 @@ lib${LIB_PRIVATE}${LIB}.a: ${OBJS} ${STATICOBJS}
 	${AR} ${ARFLAGS} ${.TARGET} `NM='${NM}' NMFLAGS='${NMFLAGS}' \
 	    ${LORDER} ${OBJS} ${STATICOBJS} | ${TSORT} ${TSORTFLAGS}` ${ARADD}
 	${RANLIB} ${RANLIBFLAGS} ${.TARGET}
+
+lib${LIB_PRIVATE}${LIB}.bc: ${BCOBJS}
+	${LLVM_LINK} -o ${.TARGET} ${BCOBJS}
+
+lib${LIB_PRIVATE}${LIB}.ll: ${LLOBJS}
+	${LLVM_LINK} -S -o ${.TARGET} ${LLOBJS}
+
+.if defined(BITCODE_EVERYWHERE) && !defined(BOOTSTRAPPING)
+_LIBS+=		lib${LIB_PRIVATE}${LIB}.bc
+.endif
 .endif
 
 .if !defined(INTERNALLIB)
@@ -199,18 +211,6 @@ lib${LIB_PRIVATE}${LIB}_p.a: ${POBJS}
 	${RANLIB} ${RANLIBFLAGS} ${.TARGET}
 .endif
 
-.if defined(LLVM_LINK)
-BCOBJS=		${OBJS:.o=.bco} ${STATICOBJS:.o=.bco}
-LLOBJS=		${OBJS:.o=.llo} ${STATICOBJS:.o=.llo}
-CLEANFILES+=	${BCOBJS} ${LLOBJS}
-
-lib${LIB_PRIVATE}${LIB}.bc: ${BCOBJS}
-	${LLVM_LINK} -o ${.TARGET} ${BCOBJS}
-
-lib${LIB_PRIVATE}${LIB}.ll: ${LLOBJS}
-	${LLVM_LINK} -S -o ${.TARGET} ${LLOBJS}
-.endif
-
 .if defined(SHLIB_NAME) || \
     defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 SOBJS+=		${OBJS:.o=.pico}
@@ -221,9 +221,11 @@ CLEANFILES+=	${SOBJS}
 .if defined(SHLIB_NAME)
 _LIBS+=		${SHLIB_NAME}
 
+LD_NO_FATAL_WARNS?=-Wl,--no-fatal-warnings
+
 SOLINKOPTS+=	-shared -Wl,-x
 .if defined(LD_FATAL_WARNINGS) && ${LD_FATAL_WARNINGS} == "no"
-SOLINKOPTS+=	-Wl,--no-fatal-warnings
+SOLINKOPTS+=	${LD_NO_FATAL_WARNS}
 .else
 SOLINKOPTS+=	-Wl,--fatal-warnings
 .endif
@@ -262,7 +264,8 @@ ${SHLIB_NAME_FULL}: ${SOBJS}
 .endif
 
 .if ${MK_DEBUG_FILES} != "no"
-CLEANFILES+=	${SHLIB_NAME_FULL} ${SHLIB_NAME}.debug
+CLEANFILES+=	${SHLIB_NAME_FULL} ${SHLIB_NAME}.debug \
+		lib${LIB_PRIVATE}${LIB}.bc lib${LIB_PRIVATE}${LIB}.ll
 ${SHLIB_NAME}: ${SHLIB_NAME_FULL} ${SHLIB_NAME}.debug
 	${OBJCOPY} --strip-debug --add-gnu-debuglink=${SHLIB_NAME}.debug \
 	    ${SHLIB_NAME_FULL} ${.TARGET}
@@ -349,6 +352,11 @@ _libinstall:
 .if ${MK_PROFILE} != "no" && defined(LIB) && !empty(LIB)
 	${INSTALL} ${TAG_ARGS:D${TAG_ARGS},profile} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
 	    ${_INSTALLFLAGS} lib${LIB_PRIVATE}${LIB}_p.a ${DESTDIR}${_LIBDIR}/
+.endif
+.if defined(BITCODE_EVERYWHERE) && !defined(BOOTSTRAPPING) \
+	&& defined(LIB) && !empty(LIB)
+	${INSTALL} ${TAG_ARGS} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
+	    ${_INSTALLFLAGS} lib${LIB_PRIVATE}${LIB}.bc ${DESTDIR}${_LIBDIR}/
 .endif
 .if defined(SHLIB_NAME)
 	${INSTALL} ${TAG_ARGS} ${STRIP} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \

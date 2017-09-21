@@ -59,6 +59,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/socket.h>
 #include <sys/syscallsubr.h>
 #include <sys/sysctl.h>
+#include <sys/uuid.h>
 #include <sys/vnode.h>
 
 #include <net/if.h>
@@ -70,6 +71,7 @@ __FBSDID("$FreeBSD$");
 #include <ddb/ddb.h>
 #endif /* DDB */
 
+#include <security/audit/audit.h>
 #include <security/mac/mac_framework.h>
 
 #define	DEFAULT_HOSTUUID	"00000000-0000-0000-0000-000000000000"
@@ -199,6 +201,7 @@ static char *pr_allow_names[] = {
 	"allow.mount.fdescfs",
 	"allow.mount.linprocfs",
 	"allow.mount.linsysfs",
+	"allow.reserved_ports",
 };
 const size_t pr_allow_names_size = sizeof(pr_allow_names);
 
@@ -218,10 +221,11 @@ static char *pr_allow_nonames[] = {
 	"allow.mount.nofdescfs",
 	"allow.mount.nolinprocfs",
 	"allow.mount.nolinsysfs",
+	"allow.noreserved_ports",
 };
 const size_t pr_allow_nonames_size = sizeof(pr_allow_nonames);
 
-#define	JAIL_DEFAULT_ALLOW		PR_ALLOW_SET_HOSTNAME
+#define	JAIL_DEFAULT_ALLOW		(PR_ALLOW_SET_HOSTNAME | PR_ALLOW_RESERVED_PORTS)
 #define	JAIL_DEFAULT_ENFORCE_STATFS	2
 #define	JAIL_DEFAULT_DEVFS_RSNUM	0
 static unsigned jail_default_allow = JAIL_DEFAULT_ALLOW;
@@ -519,6 +523,7 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 	unsigned tallow;
 	char numbuf[12];
 
+	AUDIT_ARG_VALUE(flags);
 	error = priv_check(td, PRIV_JAIL_SET);
 	if (!error && (flags & JAIL_ATTACH))
 		error = priv_check(td, PRIV_JAIL_ATTACH);
@@ -924,8 +929,8 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 			error = EINVAL;
 			goto done_free;
 		}
-		NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_SYSSPACE,
-		    path, td);
+		NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | AUDITVNODE1,
+		    UIO_SYSSPACE, path, td);
 		error = namei(&nd);
 		if (error)
 			goto done_free;
@@ -1220,6 +1225,11 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 			root = mypr->pr_root;
 			vref(root);
 		}
+
+		/* Provide a time-based UUID for each jail. */
+		(void)kern_uuidgen(&pr->pr_uuid, 1);
+
+		/* Vs. user-provided host UUID. */
 		strlcpy(pr->pr_hostuuid, DEFAULT_HOSTUUID, HOSTUUIDLEN);
 		pr->pr_flags |= PR_HOST;
 #if defined(INET) || defined(INET6)
@@ -1298,8 +1308,14 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 		 * want others to see the incomplete prison once the
 		 * allprison_lock is downgraded.
 		 */
+#ifdef KDTRACE_HOOKS
+		AUDIT_RET_OBJUUID1(&pr->pr_uuid);
+#endif
 	} else {
 		created = 0;
+#ifdef KDTRACE_HOOKS
+		AUDIT_ARG_OBJUUID1(&pr->pr_uuid);
+#endif
 		/*
 		 * Grab a reference for existing prisons, to ensure they
 		 * continue to exist for the duration of the call.
@@ -1687,8 +1703,10 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 		}
 	} else if (host != NULL || domain != NULL || uuid != NULL || gothid) {
 		/* Set this prison, and any descendants without PR_HOST. */
-		if (host != NULL)
+		if (host != NULL) {
 			strlcpy(pr->pr_hostname, host, sizeof(pr->pr_hostname));
+			AUDIT_ARG_TEXT(pr->pr_hostname);
+		}
 		if (domain != NULL)
 			strlcpy(pr->pr_domainname, domain, 
 			    sizeof(pr->pr_domainname));
@@ -1942,6 +1960,7 @@ kern_jail_get(struct thread *td, struct uio *optuio, int flags)
 	char *errmsg, *name;
 	int error, errmsg_len, errmsg_pos, fi, i, jid, len, locked, pos;
 
+	AUDIT_ARG_VALUE(flags);
 	if (flags & ~JAIL_GET_MASK)
 		return (EINVAL);
 
@@ -2024,6 +2043,10 @@ kern_jail_get(struct thread *td, struct uio *optuio, int flags)
 	goto done_unlock_list;
 
  found_prison:
+#ifdef KDTRACE_HOOKS
+	AUDIT_ARG_OBJUUID1(&pr->pr_uuid);
+#endif
+
 	/* Get the parameters of the prison. */
 	pr->pr_ref++;
 	locked = PD_LOCKED;
@@ -2237,6 +2260,10 @@ sys_jail_remove(struct thread *td, struct jail_remove_args *uap)
 		return (EINVAL);
 	}
 
+#ifdef KDTRACE_HOOKS
+	AUDIT_ARG_OBJUUID1(&pr->pr_uuid);
+#endif
+
 	/* Remove all descendants of this prison, then remove this prison. */
 	pr->pr_ref++;
 	if (!LIST_EMPTY(&pr->pr_children)) {
@@ -2343,6 +2370,10 @@ sys_jail_attach(struct thread *td, struct jail_attach_args *uap)
 		sx_sunlock(&allprison_lock);
 		return (EINVAL);
 	}
+
+#ifdef KDTRACE_HOOKS
+	AUDIT_ARG_OBJUUID1(&pr->pr_uuid);
+#endif
 
 	/*
 	 * Do not allow a process to attach to a prison that is not
@@ -3304,10 +3335,17 @@ prison_priv_check(struct ucred *cred, int priv)
 			return (EPERM);
 
 		/*
-		 * Allow jailed root to bind reserved ports and reuse in-use
-		 * ports.
+		 * Conditionally allow jailed root to bind reserved ports.
 		 */
 	case PRIV_NETINET_RESERVEDPORT:
+		if (cred->cr_prison->pr_allow & PR_ALLOW_RESERVED_PORTS)
+			return (0);
+		else
+			return (EPERM);
+
+		/*
+		 * Allow jailed root to reuse in-use ports.
+		 */
 	case PRIV_NETINET_REUSEPORT:
 		return (0);
 
@@ -3788,6 +3826,8 @@ SYSCTL_JAIL_PARAM(_allow, quotas, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Jail may set file quotas");
 SYSCTL_JAIL_PARAM(_allow, socket_af, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Jail may create sockets other than just UNIX/IPv4/IPv6/route");
+SYSCTL_JAIL_PARAM(_allow, reserved_ports, CTLTYPE_INT | CTLFLAG_RW,
+    "B", "Jail may bind sockets to reserved ports");
 
 SYSCTL_JAIL_PARAM_SUBNODE(allow, mount, "Jail mount/unmount permission flags");
 SYSCTL_JAIL_PARAM(_allow_mount, , CTLTYPE_INT | CTLFLAG_RW,
@@ -3999,6 +4039,9 @@ db_show_prison(struct prison *pr)
 	int ii;
 #endif
 	unsigned jsf;
+#ifdef INET
+	char ip4buf[INET_ADDRSTRLEN];
+#endif
 #ifdef INET6
 	char ip6buf[INET6_ADDRSTRLEN];
 #endif
@@ -4050,7 +4093,7 @@ db_show_prison(struct prison *pr)
 	for (ii = 0; ii < pr->pr_ip4s; ii++)
 		db_printf(" %s %s\n",
 		    ii == 0 ? "ip4.addr        =" : "                 ",
-		    inet_ntoa(pr->pr_ip4[ii]));
+		    inet_ntoa_r(pr->pr_ip4[ii], ip4buf));
 #endif
 #ifdef INET6
 	db_printf(" ip6s            = %d\n", pr->pr_ip6s);

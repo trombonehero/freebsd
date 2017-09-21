@@ -124,6 +124,7 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/ptrace.h>
+#include <sys/random.h>
 #include <sys/rwlock.h>
 #include <sys/sx.h>
 #include <sys/sysctl.h>
@@ -135,6 +136,9 @@
 #include "dtrace_cddl.h"
 #include "dtrace_debug.c"
 #endif
+
+#include "dtrace_xoroshiro128_plus.h"
+#include "dtrace_uuid.h"
 
 /*
  * DTrace Tunable Variables
@@ -298,7 +302,6 @@ static kmutex_t		dtrace_meta_lock;	/* meta-provider state lock */
 #define vuprintf	vprintf
 #define ttoproc(_a)	((_a)->td_proc)
 #define crgetzoneid(_a)	0
-#define	NCPU		MAXCPU
 #define SNOCD		0
 #define CPU_ON_INTR(_a)	0
 
@@ -604,6 +607,40 @@ static int dtrace_canload_remains(uint64_t, size_t, size_t *,
     dtrace_mstate_t *, dtrace_vstate_t *);
 static int dtrace_canstore_remains(uint64_t, size_t, size_t *,
     dtrace_mstate_t *, dtrace_vstate_t *);
+
+static __inline uint64_t
+rotl(const uint64_t x, int k)
+{
+	return (x << k) | (x >> (64 - k));
+}
+
+/*
+ * This is the jump function for the generator. It is equivalent to 2^64 calls
+ * to next(); it can be used to generate 2^64 non-overlapping subsequences for
+ * parallel computations.
+ */
+/*
+void
+jump(uint64_t * s, uint64_t * s_jump)
+{
+	static const uint64_t JUMP[] = { 0xbeac0467eba5facb,
+		0xd86b048b86aa9922 };
+
+	uint64_t s0 = 0;
+	uint64_t s1 = 0;
+	for(int i = 0; i < sizeof JUMP / sizeof *JUMP; i++)
+		for(int b = 0; b < 64; b++) {
+			if (JUMP[i] & 1ULL << b) {
+				s0 ^= s[0];
+				s1 ^= s[1];
+			}
+			next();
+		}
+
+	s_jump[0] = s0;
+	s_jump[1] = s1;
+}
+*/
 
 /*
  * DTrace Probe Context Functions
@@ -4236,7 +4273,8 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 
 	switch (subr) {
 	case DIF_SUBR_RAND:
-		regs[rd] = (dtrace_gethrtime() * 2416 + 374441) % 1771875;
+		regs[rd] = dtrace_xoroshiro128_plus_next(
+		    state->dts_rstate[curcpu]);
 		break;
 
 #ifdef illumos
@@ -4335,7 +4373,9 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr((uintptr_t)&tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		regs[rd] = LOCK_CLASS(l.li)->lc_owner(l.li, &lowner);
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		break;
 
 	case DIF_SUBR_MUTEX_OWNER:
@@ -4345,7 +4385,9 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr((uintptr_t)&tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		LOCK_CLASS(l.li)->lc_owner(l.li, &lowner);
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		regs[rd] = (uintptr_t)lowner;
 		break;
 
@@ -4356,9 +4398,9 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr((uintptr_t)&tupregs[0].dttk_value);
-		/* XXX - should be only LC_SLEEPABLE? */
-		regs[rd] = (LOCK_CLASS(l.li)->lc_flags &
-		    (LC_SLEEPLOCK | LC_SLEEPABLE)) != 0;
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
+		regs[rd] = (LOCK_CLASS(l.li)->lc_flags & LC_SLEEPLOCK) != 0;
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		break;
 
 	case DIF_SUBR_MUTEX_TYPE_SPIN:
@@ -4368,7 +4410,9 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr((uintptr_t)&tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		regs[rd] = (LOCK_CLASS(l.li)->lc_flags & LC_SPINLOCK) != 0;
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		break;
 
 	case DIF_SUBR_RW_READ_HELD: 
@@ -4379,8 +4423,10 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr((uintptr_t)&tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		regs[rd] = LOCK_CLASS(l.li)->lc_owner(l.li, &lowner) &&
 		    lowner == NULL;
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		break;
 
 	case DIF_SUBR_RW_WRITE_HELD:
@@ -4391,8 +4437,10 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr(tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		regs[rd] = LOCK_CLASS(l.li)->lc_owner(l.li, &lowner) &&
 		    lowner != NULL;
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		break;
 
 	case DIF_SUBR_RW_ISWRITER:
@@ -4403,7 +4451,9 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 			break;
 		}
 		l.lx = dtrace_loadptr(tupregs[0].dttk_value);
+		DTRACE_CPUFLAG_SET(CPU_DTRACE_NOFAULT);
 		LOCK_CLASS(l.li)->lc_owner(l.li, &lowner);
+		DTRACE_CPUFLAG_CLEAR(CPU_DTRACE_NOFAULT);
 		regs[rd] = (lowner == curthread);
 		break;
 #endif /* illumos */
@@ -5447,6 +5497,40 @@ dtrace_dif_subr(uint_t subr, uint_t rd, uint64_t *regs,
 		break;
 	}
 
+	case DIF_SUBR_UUIDTOSTR: {
+		uintptr_t src = tupregs[0].dttk_value;
+		char *dest = (char *)mstate->dtms_scratch_ptr;
+		char uuid[16];
+		int len = sizeof(uuid);
+		char buf[38];
+		uint64_t size = sizeof(buf);
+		struct uuid_private *id;
+		int i;
+
+		if (!dtrace_canload(src, len, mstate, vstate)) {
+			regs[rd] = 0;
+			break;
+		}
+
+		for (i = 0; i < len; i++)
+			uuid[i] = dtrace_load8(src + i);
+
+		if (!DTRACE_INSCRATCH(mstate, size)) {
+			DTRACE_CPUFLAG_SET(CPU_DTRACE_NOSCRATCH);
+			regs[rd] = 0;
+			break;
+		}
+
+		/* XXX-AT: Probably shouldn't use snprintf. */
+		id = (struct uuid_private *)&uuid;
+		snprintf(dest, size, "%08x-%04x-%04x-%04x-%04x%04x%04x",
+		    id->time.x.low, id->time.x.mid, id->time.x.hi, be16toh(id->seq),
+		    be16toh(id->node[0]), be16toh(id->node[1]), be16toh(id->node[2]));
+		regs[rd] = (uintptr_t)dest;
+		mstate->dtms_scratch_ptr += size;
+		break;
+	}
+
 	case DIF_SUBR_HTONS:
 	case DIF_SUBR_NTOHS:
 #if BYTE_ORDER == BIG_ENDIAN
@@ -6046,6 +6130,11 @@ inetout:	regs[rd] = (uintptr_t)end + 1;
 		break;
 	}
 #endif
+	case DIF_SUBR_RANDOM: {
+		regs[rd] = dtrace_xoroshiro128_plus_next(
+		    state->dts_rstate[curcpu]);
+		break;
+	}
 	}
 }
 
@@ -10259,6 +10348,7 @@ dtrace_difo_validate_helper(dtrace_difo_t *dp)
 			    subr == DIF_SUBR_JSON ||
 			    subr == DIF_SUBR_LLTOSTR ||
 			    subr == DIF_SUBR_STRTOLL ||
+			    subr == DIF_SUBR_UUIDTOSTR ||
 			    subr == DIF_SUBR_RINDEX ||
 			    subr == DIF_SUBR_STRCHR ||
 			    subr == DIF_SUBR_STRJOIN ||
@@ -12104,16 +12194,6 @@ err:
 	int i;
 
 	*factor = 1;
-#if defined(__aarch64__) || defined(__amd64__) || defined(__arm__) || \
-    defined(__mips__) || defined(__powerpc__) || defined(__riscv__)
-	/*
-	 * FreeBSD isn't good at limiting the amount of memory we
-	 * ask to malloc, so let's place a limit here before trying
-	 * to do something that might well end in tears at bedtime.
-	 */
-	if (size > physmem * PAGE_SIZE / (128 * (mp_maxid + 1)))
-		return (ENOMEM);
-#endif
 
 	ASSERT(MUTEX_HELD(&dtrace_lock));
 	CPU_FOREACH(i) {
@@ -13331,8 +13411,11 @@ dtrace_dof_property(const char *name)
 
 	data += strlen(name) + 1; /* skip past the '=' */
 	len = eol - data;
+	if (len % 2 != 0) {
+		dtrace_dof_error(NULL, "invalid DOF encoding length");
+		goto doferr;
+	}
 	bytes = len / 2;
-
 	if (bytes < sizeof(dof_hdr_t)) {
 		dtrace_dof_error(NULL, "truncated header");
 		goto doferr;
@@ -13902,12 +13985,13 @@ err:
 
 /*
  * Apply the relocations from the specified 'sec' (a DOF_SECT_URELHDR) to the
- * specified DOF.  At present, this amounts to simply adding 'ubase' to the
- * site of any user SETX relocations to account for load object base address.
- * In the future, if we need other relocations, this function can be extended.
+ * specified DOF.  SETX relocations are computed using 'ubase', the base load
+ * address of the object containing the DOF, and DOFREL relocations are relative
+ * to the relocation offset within the DOF.
  */
 static int
-dtrace_dof_relocate(dof_hdr_t *dof, dof_sec_t *sec, uint64_t ubase)
+dtrace_dof_relocate(dof_hdr_t *dof, dof_sec_t *sec, uint64_t ubase,
+    uint64_t udaddr)
 {
 	uintptr_t daddr = (uintptr_t)dof;
 	dof_relohdr_t *dofr =
@@ -13945,6 +14029,7 @@ dtrace_dof_relocate(dof_hdr_t *dof, dof_sec_t *sec, uint64_t ubase)
 		case DOF_RELO_NONE:
 			break;
 		case DOF_RELO_SETX:
+		case DOF_RELO_DOFREL:
 			if (r->dofr_offset >= ts->dofs_size || r->dofr_offset +
 			    sizeof (uint64_t) > ts->dofs_size) {
 				dtrace_dof_error(dof, "bad relocation offset");
@@ -13956,7 +14041,11 @@ dtrace_dof_relocate(dof_hdr_t *dof, dof_sec_t *sec, uint64_t ubase)
 				return (-1);
 			}
 
-			*(uint64_t *)taddr += ubase;
+			if (r->dofr_type == DOF_RELO_SETX)
+				*(uint64_t *)taddr += ubase;
+			else
+				*(uint64_t *)taddr +=
+				    udaddr + ts->dofs_offset + r->dofr_offset;
 			break;
 		default:
 			dtrace_dof_error(dof, "invalid relocation type");
@@ -13977,7 +14066,7 @@ dtrace_dof_relocate(dof_hdr_t *dof, dof_sec_t *sec, uint64_t ubase)
  */
 static int
 dtrace_dof_slurp(dof_hdr_t *dof, dtrace_vstate_t *vstate, cred_t *cr,
-    dtrace_enabling_t **enabp, uint64_t ubase, int noprobes)
+    dtrace_enabling_t **enabp, uint64_t ubase, uint64_t udaddr, int noprobes)
 {
 	uint64_t len = dof->dofh_loadsz, seclen;
 	uintptr_t daddr = (uintptr_t)dof;
@@ -14139,7 +14228,7 @@ dtrace_dof_slurp(dof_hdr_t *dof, dtrace_vstate_t *vstate, cred_t *cr,
 
 		switch (sec->dofs_type) {
 		case DOF_SECT_URELHDR:
-			if (dtrace_dof_relocate(dof, sec, ubase) != 0)
+			if (dtrace_dof_relocate(dof, sec, ubase, udaddr) != 0)
 				return (-1);
 			break;
 		}
@@ -14483,6 +14572,7 @@ dtrace_state_create(struct cdev *dev, struct ucred *cred __unused)
 	dtrace_state_t *state;
 	dtrace_optval_t *opt;
 	int bufsize = NCPU * sizeof (dtrace_buffer_t), i;
+	int cpu_it;
 
 	ASSERT(MUTEX_HELD(&dtrace_lock));
 	ASSERT(MUTEX_HELD(&cpu_lock));
@@ -14537,6 +14627,21 @@ dtrace_state_create(struct cdev *dev, struct ucred *cred __unused)
 	 */
 	state->dts_buffer = kmem_zalloc(bufsize, KM_SLEEP);
 	state->dts_aggbuffer = kmem_zalloc(bufsize, KM_SLEEP);
+
+	/*
+         * Allocate and initialise the per-process per-CPU random state.
+	 * SI_SUB_RANDOM < SI_SUB_DTRACE_ANON therefore entropy device is
+         * assumed to be seeded at this point (if from Fortuna seed file).
+	 */
+	(void) read_random(&state->dts_rstate[0], 2 * sizeof(uint64_t));
+	for (cpu_it = 1; cpu_it < NCPU; cpu_it++) {
+		/*
+		 * Each CPU is assigned a 2^64 period, non-overlapping
+		 * subsequence.
+		 */
+		dtrace_xoroshiro128_plus_jump(state->dts_rstate[cpu_it-1],
+		    state->dts_rstate[cpu_it]); 
+	}
 
 #ifdef illumos
 	state->dts_cleaner = CYCLIC_NONE;
@@ -15344,7 +15449,7 @@ dtrace_state_destroy(dtrace_state_t *state)
 
 	dtrace_buffer_free(state->dts_buffer);
 	dtrace_buffer_free(state->dts_aggbuffer);
-
+	
 	for (i = 0; i < nspec; i++)
 		dtrace_buffer_free(spec[i].dtsp_buffer);
 
@@ -15488,7 +15593,7 @@ dtrace_anon_property(void)
 		}
 
 		rv = dtrace_dof_slurp(dof, &state->dts_vstate, CRED(),
-		    &dtrace_anon.dta_enabling, 0, B_TRUE);
+		    &dtrace_anon.dta_enabling, 0, 0, B_TRUE);
 
 		if (rv == 0)
 			rv = dtrace_dof_options(dof, state);
@@ -16243,18 +16348,11 @@ dtrace_helper_provider_validate(dof_hdr_t *dof, dof_sec_t *sec)
 }
 
 static int
-#ifdef __FreeBSD__
 dtrace_helper_slurp(dof_hdr_t *dof, dof_helper_t *dhp, struct proc *p)
-#else
-dtrace_helper_slurp(dof_hdr_t *dof, dof_helper_t *dhp)
-#endif
 {
 	dtrace_helpers_t *help;
 	dtrace_vstate_t *vstate;
 	dtrace_enabling_t *enab = NULL;
-#ifndef __FreeBSD__
-	proc_t *p = curproc;
-#endif
 	int i, gen, rv, nhelpers = 0, nprovs = 0, destroy = 1;
 	uintptr_t daddr = (uintptr_t)dof;
 
@@ -16265,8 +16363,8 @@ dtrace_helper_slurp(dof_hdr_t *dof, dof_helper_t *dhp)
 
 	vstate = &help->dthps_vstate;
 
-	if ((rv = dtrace_dof_slurp(dof, vstate, NULL, &enab,
-	    dhp != NULL ? dhp->dofhp_addr : 0, B_FALSE)) != 0) {
+	if ((rv = dtrace_dof_slurp(dof, vstate, NULL, &enab, dhp->dofhp_addr,
+	    dhp->dofhp_dof, B_FALSE)) != 0) {
 		dtrace_dof_destroy(dof);
 		return (rv);
 	}
@@ -16274,22 +16372,20 @@ dtrace_helper_slurp(dof_hdr_t *dof, dof_helper_t *dhp)
 	/*
 	 * Look for helper providers and validate their descriptions.
 	 */
-	if (dhp != NULL) {
-		for (i = 0; i < dof->dofh_secnum; i++) {
-			dof_sec_t *sec = (dof_sec_t *)(uintptr_t)(daddr +
-			    dof->dofh_secoff + i * dof->dofh_secsize);
+	for (i = 0; i < dof->dofh_secnum; i++) {
+		dof_sec_t *sec = (dof_sec_t *)(uintptr_t)(daddr +
+		    dof->dofh_secoff + i * dof->dofh_secsize);
 
-			if (sec->dofs_type != DOF_SECT_PROVIDER)
-				continue;
+		if (sec->dofs_type != DOF_SECT_PROVIDER)
+			continue;
 
-			if (dtrace_helper_provider_validate(dof, sec) != 0) {
-				dtrace_enabling_destroy(enab);
-				dtrace_dof_destroy(dof);
-				return (-1);
-			}
-
-			nprovs++;
+		if (dtrace_helper_provider_validate(dof, sec) != 0) {
+			dtrace_enabling_destroy(enab);
+			dtrace_dof_destroy(dof);
+			return (-1);
 		}
+
+		nprovs++;
 	}
 
 	/*
@@ -16330,7 +16426,7 @@ dtrace_helper_slurp(dof_hdr_t *dof, dof_helper_t *dhp)
 	gen = help->dthps_generation++;
 	dtrace_enabling_destroy(enab);
 
-	if (dhp != NULL && nprovs > 0) {
+	if (nprovs > 0) {
 		/*
 		 * Now that this is in-kernel, we change the sense of the
 		 * members:  dofhp_dof denotes the in-kernel copy of the DOF

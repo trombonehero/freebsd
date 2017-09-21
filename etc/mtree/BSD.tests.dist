@@ -8,11 +8,17 @@
     bin
         cat
         ..
+        chmod
+        ..
         date
         ..
         dd
         ..
+        echo
+        ..
         expr
+        ..
+        ln
         ..
         ls
         ..
@@ -22,6 +28,8 @@
         ..
         pkill
         ..
+        pwait
+        ..
         sh
             builtins
             ..
@@ -30,6 +38,8 @@
             execution
             ..
             expansion
+            ..
+            invocation
             ..
             parameters
             ..
@@ -308,6 +318,8 @@
             ttyio
             ..
         ..
+        libcam
+        ..
         libcasper
             services
                 cap_dns
@@ -324,15 +336,17 @@
         ..
         libdevdctl
         ..
+        libkvm
+        ..
         libmp
         ..
         libnv
         ..
-        libpam
-        ..
         libproc
         ..
         librt
+        ..
+        libsbuf
         ..
         libthr
             dlopen
@@ -366,6 +380,10 @@
         ..
         mdconfig
         ..
+        pfctl
+            files
+            ..
+        ..
     ..
     secure
         lib
@@ -384,7 +402,11 @@
                 ..
                 plain
                 ..
+                tap
+                ..
             ..
+        ..
+        zoneinfo
         ..
     ..
     sys
@@ -480,6 +502,8 @@
             truncate
             ..
             unlink
+            ..
+            utimensat
             ..
         ..
         posixshm
@@ -594,11 +618,13 @@
                 ..
             ..
         ..
-	bsdcat
-	..
+        bsdcat
+        ..
         calendar
         ..
         cmp
+        ..
+        compress
         ..
         cpio
         ..
@@ -606,17 +632,29 @@
         ..
         comm
         ..
+        csplit
+        ..
         cut
+        ..
+        diff
         ..
         dirname
         ..
+        du
+        ..
         file2c
+        ..
+        getconf
         ..
         grep
         ..
         gzip
         ..
+        hexdump
+        ..
         ident
+        ..
+        indent
         ..
         join
         ..
@@ -634,7 +672,11 @@
         ..
         opensm
         ..
+        pr
+        ..
         printf
+        ..
+        procstat
         ..
         sdiff
         ..
@@ -643,6 +685,10 @@
             ..
         ..
         soelim
+        ..
+        stat
+        ..
+        tail
         ..
         tar
         ..
@@ -657,6 +703,8 @@
         uudecode
         ..
         uuencode
+        ..
+        uniq
         ..
         xargs
         ..

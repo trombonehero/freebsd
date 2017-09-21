@@ -30,10 +30,11 @@
 #define	_POSIX4_KSEM_H_
 
 #if !defined(_KERNEL) && !defined(_WANT_FILE)
-#error "no user-servicable parts inside"
+#error "no user-serviceable parts inside"
 #endif
 
 #include <sys/condvar.h>
+#include <sys/uuid.h>
 
 struct ksem {
 	int		ks_ref;		/* number of references */
@@ -58,6 +59,7 @@ struct ksem {
 
 	struct label	*ks_label;	/* MAC label */
 	const char	*ks_path;
+	struct uuid	 ks_uuid;
 };
 
 #define	KS_ANONYMOUS	0x0001		/* Anonymous (unnamed) semaphore. */

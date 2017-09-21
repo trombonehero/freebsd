@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -46,6 +46,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
+#include <sys/uuid.h>
 #include <sys/vnode.h>
 
 #include <vm/uma.h>
@@ -134,6 +135,15 @@ ncl_nget(struct mount *mntp, u_int8_t *fhp, int fhsize, struct nfsnode **npp,
 	vp->v_bufobj.bo_ops = &buf_ops_newnfs;
 	vp->v_data = np;
 	np->n_vnode = vp;
+
+	/*
+	 * Use the NFS file handle to generate an initial UUID.  This has the
+	 * interesting property that if the NFS server is generating its UUIDs
+	 * the same way, they will match.  However, no attempt is made to
+	 * ensure these are globally unique or consistent.
+	 */
+	vn_uuid_from_data(vp, fhp, fhsize);
+
 	/* 
 	 * Initialize the mutex even if the vnode is going to be a loser.
 	 * This simplifies the logic in reclaim, which can then unconditionally
@@ -248,7 +258,7 @@ ncl_inactive(struct vop_inactive_args *ap)
 		} else
 			retv = TRUE;
 		if (retv == TRUE) {
-			(void)ncl_flush(vp, MNT_WAIT, NULL, ap->a_td, 1, 0);
+			(void)ncl_flush(vp, MNT_WAIT, ap->a_td, 1, 0);
 			(void)nfsrpc_close(vp, 1, ap->a_td);
 		}
 	}
@@ -259,10 +269,12 @@ ncl_inactive(struct vop_inactive_args *ap)
 
 	/*
 	 * NMODIFIED means that there might be dirty/stale buffers
-	 * associated with the NFS vnode.  None of the other flags are
-	 * meaningful after the vnode is unused.
+	 * associated with the NFS vnode.
+	 * NDSCOMMIT means that the file is on a pNFS server and commits
+	 * should be done to the DS.
+	 * None of the other flags are meaningful after the vnode is unused.
 	 */
-	np->n_flag &= NMODIFIED;
+	np->n_flag &= (NMODIFIED | NDSCOMMIT);
 	mtx_unlock(&np->n_mtx);
 	return (0);
 }

@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -198,9 +198,13 @@ extern STAILQ_HEAD(file_list_head, file_list) ftab;
 
 extern STAILQ_HEAD(files_name_head, files_name) fntab;
 
+extern int	llvm_ir;
+extern int	instrumenting;
 extern int	profiling;
 extern int	debugging;
 extern int	found_defaults;
+extern int	instrumenting;
+extern int	llvm_ir;
 
 extern int	maxusers;
 

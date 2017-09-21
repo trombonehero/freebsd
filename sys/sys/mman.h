@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -43,6 +43,7 @@
 #define INHERIT_SHARE	0
 #define INHERIT_COPY	1
 #define INHERIT_NONE	2
+#define INHERIT_ZERO	3
 #endif
 
 /*
@@ -89,6 +90,7 @@
 /*
  * Extended flags
  */
+#define	MAP_GUARD	 0x00002000 /* reserve but don't map address range */
 #define	MAP_EXCL	 0x00004000 /* for MAP_FIXED, fail if address is used */
 #define	MAP_NOCORE	 0x00020000 /* dont include these pages in a coredump */
 #define	MAP_PREFAULT_READ 0x00040000 /* prefault mapping for reading */
@@ -198,6 +200,7 @@ typedef	__size_t	size_t;
 #include <sys/mutex.h>
 #include <sys/queue.h>
 #include <sys/rangelock.h>
+#include <sys/uuid.h>
 #include <vm/vm.h>
 
 struct file;
@@ -223,6 +226,7 @@ struct shmfd {
 
 	struct label	*shm_label;		/* MAC label */
 	const char	*shm_path;
+	struct uuid	shm_uuid;
 
 	struct rangelock shm_rl;
 	struct mtx	shm_mtx;

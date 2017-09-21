@@ -40,6 +40,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/sysproto.h>
 #include <sys/un.h>
 
+#include <security/audit/audit.h>
+
 #include <i386/ibcs2/ibcs2_types.h>
 #include <i386/ibcs2/ibcs2_signal.h>
 #include <i386/ibcs2/ibcs2_util.h>
@@ -68,7 +70,7 @@ ibcs2_secure(struct thread *td, struct ibcs2_secure_args *uap)
 }
 
 int
-ibcs2_lseek(struct thread *td, register struct ibcs2_lseek_args *uap)
+ibcs2_lseek(struct thread *td, struct ibcs2_lseek_args *uap)
 {
 	struct lseek_args largs;
 	int error;
@@ -113,6 +115,9 @@ spx_open(struct thread *td)
 		kern_close(td, fd);
 		return error;
 	}
+#ifdef KDTRACE_HOOKS
+	AUDIT_RET_FD1(fd);
+#endif
 	td->td_retval[0] = fd;
 	return 0;
 }

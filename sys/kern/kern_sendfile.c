@@ -2,6 +2,14 @@
  * Copyright (c) 2013-2015 Gleb Smirnoff <glebius@FreeBSD.org>
  * Copyright (c) 1998, David Greenman. All rights reserved.
  *
+ * Copyright (c) 2016 Robert N. M. Watson.
+ * All rights reserved.
+ *
+ * Portions of this software were developed by BAE Systems, the University of
+ * Cambridge Computer Laboratory, and Memorial University under DARPA/AFRL
+ * contract FA8650-15-C-7558 ("CADETS"), as part of the DARPA Transparent
+ * Computing (TC) research program.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -31,6 +39,7 @@
 __FBSDID("$FreeBSD$");
 
 #include "opt_compat.h"
+#include "opt_metaio.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -40,6 +49,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/sysproto.h>
 #include <sys/malloc.h>
+#include <sys/metaio.h>
 #include <sys/proc.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -61,8 +71,6 @@ __FBSDID("$FreeBSD$");
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
-
-extern vm_page_t bogus_page;
 
 /*
  * Structure describing a single sendfile(2) I/O, which may consist of
@@ -209,12 +217,12 @@ xfsize(int i, int n, off_t off, off_t len)
 /*
  * Helper function to get offset within object for i page.
  */
-static inline vm_offset_t
+static inline vm_ooffset_t
 vmoff(int i, off_t off)
 {
 
 	if (i == 0)
-		return ((vm_offset_t)off);
+		return ((vm_ooffset_t)off);
 
 	return (trunc_page(off + i * PAGE_SIZE));
 }
@@ -311,7 +319,7 @@ sendfile_swapin(vm_object_t obj, struct sf_io *sfio, off_t off, off_t len,
     int npages, int rhpages, int flags)
 {
 	vm_page_t *pa = sfio->pa;
-	int nios;
+	int grabbed, nios;
 
 	nios = 0;
 	flags = (flags & SF_NODISKIO) ? VM_ALLOC_NOWAIT : 0;
@@ -321,14 +329,14 @@ sendfile_swapin(vm_object_t obj, struct sf_io *sfio, off_t off, off_t len,
 	 * only required pages.  Readahead pages are dealt with later.
 	 */
 	VM_OBJECT_WLOCK(obj);
-	for (int i = 0; i < npages; i++) {
-		pa[i] = vm_page_grab(obj, OFF_TO_IDX(vmoff(i, off)),
-		    VM_ALLOC_WIRED | VM_ALLOC_NORMAL | flags);
-		if (pa[i] == NULL) {
-			npages = i;
-			rhpages = 0;
-			break;
-		}
+
+	grabbed = vm_page_grab_pages(obj, OFF_TO_IDX(off),
+	    VM_ALLOC_NORMAL | VM_ALLOC_WIRED | flags, pa, npages);
+	if (grabbed < npages) {
+		for (int i = grabbed; i < npages; i++)
+			pa[i] = NULL;
+		npages = grabbed;
+		rhpages = 0;
 	}
 
 	for (int i = 0; i < npages;) {
@@ -357,7 +365,7 @@ sendfile_swapin(vm_object_t obj, struct sf_io *sfio, off_t off, off_t len,
 		    &a)) {
 			pmap_zero_page(pa[i]);
 			pa[i]->valid = VM_PAGE_BITS_ALL;
-			pa[i]->dirty = 0;
+			MPASS(pa[i]->dirty == 0);
 			vm_page_xunbusy(pa[i]);
 			i++;
 			continue;
@@ -450,6 +458,7 @@ sendfile_getobj(struct thread *td, struct file *fp, vm_object_t *obj_res,
 	if (fp->f_type == DTYPE_VNODE) {
 		vp = fp->f_vnode;
 		vn_lock(vp, LK_SHARED | LK_RETRY);
+		AUDIT_ARG_VNODE1(vp);
 		if (vp->v_type != VREG) {
 			error = EINVAL;
 			goto out;
@@ -554,6 +563,11 @@ vn_sendfile(struct file *fp, int sockfd, struct uio *hdr_uio,
 	error = sendfile_getsock(td, sockfd, &sock_fp, &so);
 	if (error != 0)
 		goto out;
+
+#ifdef KDTRACE_HOOKS
+	/* vnode argument audited in sendfile_getobj() for locking reasons. */
+	AUDIT_ARG_OBJUUID2(&so->so_uuid);
+#endif
 
 #ifdef MAC
 	error = mac_socket_check_send(td->td_ucred, so);
@@ -691,11 +705,10 @@ retry_space:
 				goto done;
 			}
 			if (va.va_size != obj_size) {
-				if (nbytes == 0)
-					rem += va.va_size - obj_size;
-				else if (offset + nbytes > va.va_size)
-					rem -= (offset + nbytes - va.va_size);
 				obj_size = va.va_size;
+				rem = nbytes ?
+				    omin(nbytes + offset, obj_size) : obj_size;
+				rem -= off;
 			}
 		}
 
@@ -948,6 +961,7 @@ sendfile(struct thread *td, struct sendfile_args *uap, int compat)
 	if (uap->offset < 0)
 		return (EINVAL);
 
+	sbytes = 0;
 	hdr_uio = trl_uio = NULL;
 
 	if (uap->hdtr != NULL) {
@@ -1021,6 +1035,31 @@ sys_sendfile(struct thread *td, struct sendfile_args *uap)
 {
  
 	return (sendfile(td, uap, 0));
+}
+
+int
+sys_metaio_sendfile(struct thread *td, struct metaio_sendfile_args *uap)
+{
+#ifdef METAIO
+	struct sendfile_args sendfile_args;
+	struct metaio mio;
+	int error;
+
+	error = copyin(uap->miop, &mio, sizeof(mio));
+	if (error != 0)
+		return (error);
+	AUDIT_ARG_METAIO(&mio);
+	sendfile_args.fd = uap->fd;
+	sendfile_args.s = uap->s;
+	sendfile_args.offset = uap->offset;
+	sendfile_args.nbytes = uap->nbytes;
+	sendfile_args.hdtr = uap->hdtr;
+	sendfile_args.sbytes = uap->sbytes;
+	sendfile_args.flags = uap->flags;
+	return (sendfile(td, &sendfile_args, 0));
+#else /* !METAIO */
+	return (ENOSYS);
+#endif /* METAIO */
 }
 
 #ifdef COMPAT_FREEBSD4

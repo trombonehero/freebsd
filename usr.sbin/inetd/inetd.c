@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -138,7 +138,9 @@ __FBSDID("$FreeBSD$");
 #include <string.h>
 #include <sysexits.h>
 #include <syslog.h>
+#ifdef LIBWRAP
 #include <tcpd.h>
+#endif
 #include <unistd.h>
 
 #include "inetd.h"
@@ -212,7 +214,6 @@ __FBSDID("$FreeBSD$");
 #endif
 static void	close_sep(struct servtab *);
 static void	flag_signal(int);
-static void	flag_config(int);
 static void	config(void);
 static int	cpmip(const struct servtab *, int);
 static void	endconfig(void);
@@ -222,11 +223,9 @@ static struct servtab *getconfigent(void);
 static int	matchservent(const char *, const char *, const char *);
 static char	*nextline(FILE *);
 static void	addchild(struct servtab *, int);
-static void	flag_reapchild(int);
 static void	reapchild(void);
 static void	enable(struct servtab *);
 static void	disable(struct servtab *);
-static void	flag_retry(int);
 static void	retry(void);
 static int	setconfig(void);
 static void	setup(struct servtab *);
@@ -307,6 +306,7 @@ getvalue(const char *arg, int *value, const char *whine)
 	return 0;				/* success */
 }
 
+#ifdef LIBWRAP
 static sa_family_t
 whichaf(struct request_info *req)
 {
@@ -315,11 +315,14 @@ whichaf(struct request_info *req)
 	sa = (struct sockaddr *)req->client->sin;
 	if (sa == NULL)
 		return AF_UNSPEC;
+#ifdef INET6
 	if (sa->sa_family == AF_INET6 &&
 	    IN6_IS_ADDR_V4MAPPED(&satosin6(sa)->sin6_addr))
 		return AF_INET;
+#endif
 	return sa->sa_family;
 }
+#endif
 
 int
 main(int argc, char **argv)
@@ -334,9 +337,11 @@ main(int argc, char **argv)
 #ifdef LOGIN_CAP
 	login_cap_t *lc = NULL;
 #endif
+#ifdef LIBWRAP
 	struct request_info req;
 	int denied;
 	char *service = NULL;
+#endif
 	struct sockaddr_storage peer;
 	int i;
 	struct addrinfo hints, *res;
@@ -524,17 +529,17 @@ main(int argc, char **argv)
 	}
 #endif
 
-	sa.sa_flags = 0;
+	sa = (struct sigaction){
+	    .sa_flags = 0,
+	    .sa_handler = flag_signal,
+	};
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGALRM);
 	sigaddset(&sa.sa_mask, SIGCHLD);
 	sigaddset(&sa.sa_mask, SIGHUP);
-	sa.sa_handler = flag_retry;
 	sigaction(SIGALRM, &sa, &saalrm);
 	config();
-	sa.sa_handler = flag_config;
 	sigaction(SIGHUP, &sa, &sahup);
-	sa.sa_handler = flag_reapchild;
 	sigaction(SIGCHLD, &sa, &sachld);
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, &sapipe);
@@ -583,30 +588,34 @@ main(int argc, char **argv)
 	    }
 	    /* handle any queued signal flags */
 	    if (FD_ISSET(signalpipe[0], &readable)) {
-		int nsig;
+		int nsig, signo;
+
 		if (ioctl(signalpipe[0], FIONREAD, &nsig) != 0) {
-		    syslog(LOG_ERR, "ioctl: %m");
-		    exit(EX_OSERR);
-		}
-		while (--nsig >= 0) {
-		    char c;
-		    if (read(signalpipe[0], &c, 1) != 1) {
-			syslog(LOG_ERR, "read: %m");
+			syslog(LOG_ERR, "ioctl: %m");
 			exit(EX_OSERR);
-		    }
-		    if (debug)
-			warnx("handling signal flag %c", c);
-		    switch(c) {
-		    case 'A': /* sigalrm */
-			retry();
-			break;
-		    case 'C': /* sigchld */
-			reapchild();
-			break;
-		    case 'H': /* sighup */
-			config();
-			break;
-		    }
+		}
+		nsig /= sizeof(signo);
+		while (--nsig >= 0) {
+			size_t len;
+
+			len = read(signalpipe[0], &signo, sizeof(signo));
+			if (len != sizeof(signo)) {
+				syslog(LOG_ERR, "read: %m");
+				exit(EX_OSERR);
+			}
+			if (debug)
+				warnx("handling signal flag %d", signo);
+			switch (signo) {
+			case SIGALRM:
+				retry();
+				break;
+			case SIGCHLD:
+				reapchild();
+				break;
+			case SIGHUP:
+				config();
+				break;
+			}
 		}
 	    }
 	    for (sep = servtab; n && sep; sep = sep->se_next)
@@ -746,6 +755,7 @@ main(int argc, char **argv)
 					    _exit(0);
 				    }
 			    }
+#ifdef LIBWRAP
 			    if (ISWRAP(sep)) {
 				inetd_setproctitle("wrapping", ctrl);
 				service = sep->se_server_name ?
@@ -774,6 +784,7 @@ main(int argc, char **argv)
 					(whichaf(&req) == AF_INET6) ? "6" : "");
 				}
 			    }
+#endif
 			    if (sep->se_bi) {
 				(*sep->se_bi->bi_fn)(ctrl, sep);
 			    } else {
@@ -890,11 +901,12 @@ main(int argc, char **argv)
  */
 
 static void
-flag_signal(int c)
+flag_signal(int signo)
 {
-	char ch = c;
+	size_t len;
 
-	if (write(signalpipe[1], &ch, 1) != 1) {
+	len = write(signalpipe[1], &signo, sizeof(signo));
+	if (len != sizeof(signo)) {
 		syslog(LOG_ERR, "write: %m");
 		_exit(EX_OSERR);
 	}
@@ -920,16 +932,6 @@ addchild(struct servtab *sep, pid_t pid)
 	sep->se_pids[sep->se_numchild++] = pid;
 	if (sep->se_numchild == sep->se_maxchild)
 		disable(sep);
-}
-
-/*
- * Some child process has exited. See if it's on somebody's list.
- */
-
-static void
-flag_reapchild(int signo __unused)
-{
-	flag_signal('C');
 }
 
 static void
@@ -968,12 +970,6 @@ reapchild(void)
 		}
 		reapchild_conn(pid);
 	}
-}
-
-static void
-flag_config(int signo __unused)
-{
-	flag_signal('H');
 }
 
 static void
@@ -1240,12 +1236,6 @@ unregisterrpc(struct servtab *sep)
 }
 
 static void
-flag_retry(int signo __unused)
-{
-	flag_signal('A');
-}
-
-static void
 retry(void)
 {
 	struct servtab *sep;
@@ -1283,6 +1273,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 		syslog(LOG_ERR, "setsockopt (SO_PRIVSTATE): %m");
 #endif
 	/* tftpd opens a new connection then needs more infos */
+#ifdef INET6
 	if ((sep->se_family == AF_INET6) &&
 	    (strcmp(sep->se_proto, "udp") == 0) &&
 	    (sep->se_accept == 0) &&
@@ -1295,6 +1286,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 			       (char *)&flag, sizeof (flag)) < 0)
 			syslog(LOG_ERR, "setsockopt (IPV6_V6ONLY): %m");
 	}
+#endif
 #undef turnon
 #ifdef IPSEC
 	ipsecsetup(sep);
@@ -1332,7 +1324,9 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 		u_int i;
 		socklen_t len = sep->se_ctrladdr_size;
 		struct netconfig *netid, *netid2 = NULL;
+#ifdef INET6
 		struct sockaddr_in sock;
+#endif
 		struct netbuf nbuf, nbuf2;
 
                 if (getsockname(sep->se_fd,
@@ -1347,6 +1341,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 		nbuf.len = sep->se_ctrladdr.sa_len;
 		if (sep->se_family == AF_INET)
 			netid = sep->se_socktype==SOCK_DGRAM? udpconf:tcpconf;
+#ifdef INET6
 		else  {
 			netid = sep->se_socktype==SOCK_DGRAM? udp6conf:tcp6conf;
 			if (!sep->se_nomapped) { /* INET and INET6 */
@@ -1358,6 +1353,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 				sock.sin_port = sep->se_ctrladdr6.sin6_port;
 			}
 		}
+#endif
                 if (debug)
                         print_service("REG ", sep);
                 for (i = sep->se_rpc_lowvers; i <= sep->se_rpc_highvers; i++) {

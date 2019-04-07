@@ -1,0 +1,96 @@
+#
+# Description of the Clang we're building.
+#
+# Normally a Fabrique description would use the `which` plugin to find some
+# appropriate compiler, but in our case we're going to hard-code extra logic
+# because we have more specific requirements than most projects.
+#
+
+
+#
+# Expect to be passed the compiler binaries that we're going to use.
+#
+# We need to be very explicit about this, since we may import this module
+# several times ("how to build with the system compiler", "how to build with
+# the bootstrapped compiler", etc.).
+cc:file = args.cc;
+cxx:file = args.cxx;
+
+#
+# Optional arguments that influence compilation behaviour:
+#
+#  - force_colour    force coloured compiler diagnostics, even not on a TTY
+#  - lto             use link-time optimization
+#  - use_ir          build via LLVM IR (default: determined by `lto`)
+#
+colour = args.force_colour ? false;
+lto = args.lto ? false;
+use_ir = lto or (args.ir ? false);
+
+
+# Much of our logic will wrap generic "GCC-like" functionality.
+gcc = import('gcc-like.fab', target=target);
+
+#
+# Clang specializations:
+#
+clang_compile_flags =
+	(if colour ['-fcolor-diagnostics'] else [])
+	+
+	(if use_ir ['-emit-llvm'] else [])
+	;
+
+clang_linker_flags =
+	(if colour ['-fcolor-diagnostics'] else [])
+	+
+	(if lto ['-flto' '-O4'] else [])
+	;
+
+# TODO: let arbitrary name references be types
+binary_options = gcc.binary_options;
+binary = function(objects:list[file[in]], binary:file[out],
+                  options:binary_options, extra_flags:list[string] = []): file
+{
+	flags = gcc.binary_flags(options);
+
+	# TODO: cc or cxx?
+	gcc.link_binary(cxx, objects, binary, clang_linker_flags + flags)
+};
+
+compile_options = gcc.compiler_options;
+compile = function(srcs:list[file],
+                   options:compile_options,
+                   extra_flags:list[string]=[],
+                   extra_header_dirs:list[file]=[],
+                   dependencies:list[file[in]]=[]
+	): list[file]
+{
+	extra_header_dirs = extra_header_dirs + args.includes ? [];
+
+	# TODO: cc or cxx?
+	gcc.compile(cxx, srcs, options, clang_compile_flags + extra_flags,
+	            extra_header_dirs, dependencies)
+};
+
+library_options = gcc.library_options;
+library = function(objects:list[file[in]], libname:string, subdir:file,
+                   options:library_options, extra_flags:list[string] = []): file
+{
+	# TODO: cc or cxx?
+	gcc.library(cxx, objects, libname, subdir, options,
+	            extra_flags = clang_linker_flags + extra_flags)
+};
+
+shared_library = function(objects:list[file[in]], libname:string, subdir:file,
+                          extra_flags:list[string] = []): file
+{
+	library(objects, libname, subdir, record { shared_library = true; },
+	        extra_flags)
+};
+
+static_library = function(objects:list[file[in]], libname:string, subdir:file,
+                          extra_flags:list[string] = []): file
+{
+	library(objects, libname, subdir, record { shared_library = false; },
+	        extra_flags)
+};

@@ -1,25 +1,43 @@
 # $FreeBSD$
 
-llvmroot = subdir.subdir.subdir + 'contrib/llvm';
+# Be explicit about what kind of toolchain we expect to be passed.
+Toolchain = type record[tblgen:record[]];
+toolchain:Toolchain = args.toolchain;
 
-includes = includes + {
-	subdir = subdir.subdir.subdir;
+llvmroot = subdir.subdir.subdir.subdir ::: 'contrib' ::: 'llvm';
 
-	[
-		file('sys')
-		file('contrib/libc++/include')
-		llvmroot + '/include'
-		file('lib/clang/include')
-	]
+llvm_options = record
+{
+	# TODO: something else?
+	debug = true;
+	optlevel = 2;
+	pic = true;
+	standard = 'c++14';
+
+	include_dirs =
+	{
+		subdir = subdir.subdir.subdir;
+
+		[
+			file('sys')
+			file('contrib/libc++/include')
+			llvmroot + '/include'
+			file('lib/clang/include')
+		]
+	};
+
+	system_include_dirs = [];
+
+	warnings = ['all'];
 };
 
 cxxflags = [ '-nostdinc' '-std=c++11' ];
 
-tblgen = function(source:file, output:file, gen_action:string)
+tblgen = function(source:file, output:file, gen_action:string): file
 {
-	flags = [ gen_action ] + [ '-I' ] + [ (llvmroot + '/include').fullname ];
+	flags = [ gen_action ] + [ '-I' ] + [ (llvmroot :: 'include').fullname ];
 
-	clang.tblgen.llvm(source, output, flags)
+	toolchain.tblgen.llvm(source, output, flags)
 };
 
 modules =

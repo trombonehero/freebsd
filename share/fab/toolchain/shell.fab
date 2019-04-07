@@ -8,13 +8,13 @@ raw = record
 		<- dir:file[out], flags:list[string] = []);
 };
 
-copy = function(source:file, destination:file, recursive:bool = false)
+copy = function(source:file, destination:file, recursive:bool = false): file
 {
 	flags = if recursive [ '-r' ] else [];
 	raw.cp(source, destination, flags)
 };
 
-mkdir = function(directory:file, make_parents:bool = true)
+mkdir = function(directory:file, make_parents:bool = true): file
 {
 	flags = if make_parents [ '-p' ] else [];
 	raw.mkdir(directory, flags)

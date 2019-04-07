@@ -1,0 +1,25 @@
+# Expect the Clang and LLVM versions of tblgen to be passed in explicitly
+# so that we don't get confused about system vs host vs target binaries.
+clang_tblgen:file = args.clang_tblgen;
+llvm_tblgen:file = args.llvm_tblgen;
+
+tblgen = record
+{
+	generic = action('${tblgen} ${flags} -o ${output} ${source}'
+		<- source:file[in], output:file[out], flags:list[string],
+		   tblgen:file[in]);
+
+	# TODO: bind(generic, _, _, _, clang_tblgen) once Fabrique supports it
+
+	clang = function(source:file[in], output:file[out],
+	                 flags:list[string]): file
+	{
+		generic(source, output, flags, clang_tblgen)
+	};
+
+	llvm = function(source:file[in], output:file[out],
+	                flags:list[string]): file
+	{
+		generic(source, output, flags, llvm_tblgen)
+	};
+};

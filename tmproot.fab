@@ -1,4 +1,8 @@
-MachineHeaders = type[sources:list[file], destination:string];
+MachineHeaders = type record[sources:list[file], destination:string];
+
+target = args.target;
+
+shell = import('share/fab/toolchain/shell.fab');
 
 
 x86_headers:MachineHeaders = record
@@ -23,7 +27,7 @@ x86_headers:MachineHeaders = record
 
 includedir = file('tmproot/include', generated = true);
 
-headers = if args.target.arch.amd64
+headers = if target.architecture == 'amd64'
 {
 	machdep:list[MachineHeaders] = x86_headers ::
 	[
@@ -80,10 +84,10 @@ headers = if args.target.arch.amd64
 	# TODO: flatten this into a list[file]
 	foreach headers:MachineHeaders <- machdep
 	{
-		destdir = includedir + path.sep + headers.destination;
+		destdir = includedir :: headers.destination;
 
 		foreach header <- headers.sources
-			shell.copy(header, destdir + path.sep + header.filename)
+			shell.copy(header, destdir :: header.filename)
 	}
 }
 else [];

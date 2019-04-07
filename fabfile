@@ -5,38 +5,45 @@
 # (https://fabriquer.github.io).
 #
 
-host = import('host.fab');
-options = import('options.fab');
-path = import('share/fabrique/path.fab');
-shell = import('share/fabrique/shell.fab');
-
+#
+# Detect the host platform using the `platform` plugin but
+# hard-code the target platform... we're building FreeBSD.
+#
+host = import('platform');
 target = record
 {
-	arch = host.platform.architecture;
-	name =
-		if arch.amd64 'amd64'
-		else if arch.i386 'i386'
-		else
-		{
-			print('Unknown architecture:');
-			print(arch);
-			'unknown'
-		};
+	architecture = args.arch ? host.architecture;
+	osname = 'FreeBSD';
+
+	bsd = true;
+	darwin = false;
+	linux = false;
+	posix = true;
+	windows = false;
 };
 
-clang = import('share/fabrique/clang.fab', target = target);
-tmproot = import('tmproot.fab', target = target);
+# We may not always want to use the tmproot approach, but let's try to
+# change as few things as possible right now.
+tmproot = import('tmproot.fab', target=target);
+sysdir = file('sys');
 
 includes =
-[
 	file('include')
-	file('sys/sys')
-	file('sys/' + target.name + '/include')
-	file('lib/msun/src')
-	tmproot.includedir
-];
+	::
+	(sysdir :: 'sys')
+	::
+	((sysdir :: target.architecture) :: 'include')
+	::
+	((file('lib') :: 'msun') :: 'src')
+	::
+	[tmproot.includedir]
+	;
 
-c = import('share/fabrique/c.fab', includes = includes, target = target);
-cxx = import('share/fabrique/cxx.fab', includes = includes, target = target);
+options = import('options.fab');
+
+toolchain = import('share/fab/toolchain',
+	includes = includes,
+	pretty=args.pretty ? false
+);
 
 libraries = import('lib');

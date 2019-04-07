@@ -29,7 +29,7 @@ sources = {
 	)
 };
 
-objects = cxx.compile(sources, cxxflags, includes + [ builddir ],
-                      dependencies = generated_headers);
+objects = toolchain.compile(sources, llvm_options, extra_header_dirs=[builddir],
+                            dependencies = generated_headers);
 
-lib = cxx.static_library(objects, 'llvmcore', subdir);
+lib = toolchain.static_library(objects, 'llvmcore', subdir);

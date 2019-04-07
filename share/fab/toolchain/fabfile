@@ -1,0 +1,58 @@
+# Expect to receive a function that can be uesd to look up binaries.
+#
+# This may be provided by the `which` plugin when we're using the build system's
+# toolchain, but sometimes we need to use a different (built) toolchain.
+which:(string)->file = args.which ? import('which').executable;
+
+
+#
+# Configure the host and target platforms.
+#
+host = import('platform');
+target = record
+{
+	architecture = host.architecture;
+	osname = 'freebsd';
+
+	bsd = true;
+	darwin = false;
+	posix = true;
+	windows = false;
+};
+
+
+# TODO: is this sufficient to handle our bootstrapping needs?
+cc = which('clang');
+cxx = which('clang++');
+
+clang = import('clang.fab',
+	cc=cc,
+	cxx=cxx,
+	force_colour=args.pretty ? false,
+	includes=includes
+);
+
+shell = import('shell.fab');
+
+tblgen = import('tblgen.fab',
+	clang_tblgen=which('clang-tblgen'),
+	llvm_tblgen=which('llvm-tblgen'),
+).tblgen;
+
+binary = clang.binary;
+compile = clang.compile;
+library = clang.library;
+shared_library = clang.shared_library;
+static_library = clang.static_library;
+
+headers = function(srcs:list[file], subdir:file = subdir): list[file]
+{
+	# TODO: implement copying
+	[]
+};
+
+man_page = function(src:file, links:list[string] = []): list[file]
+{
+	# TODO: implement!
+	[]
+};

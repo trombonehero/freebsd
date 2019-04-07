@@ -1,0 +1,17 @@
+clang = import('clang.fab');
+
+binary = clang.binary;
+compile = clang.compile;
+library = clang.library;
+
+headers = function(srcs:list[file], subdir:file = subdir): list[file]
+{
+	# TODO: implement copying
+	[]
+};
+
+man_page = function(src:file, links:list[string] = []): list[file]
+{
+	# TODO: implement!
+	[]
+};

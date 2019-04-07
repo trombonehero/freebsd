@@ -1,0 +1,53 @@
+#
+# Description of the Clang we're building.
+#
+# Normally a Fabrique description would use the `which` plugin to find some
+# appropriate compiler, but in our case we're going to hard-code extra logic
+# because we have more specific requirements than most projects.
+#
+
+# Detect the host platform.
+host = import('platform');
+
+# Explicitly define the target platform.
+target = record
+{
+	architecture = host.architecture;
+	osname = 'freebsd';
+
+	bsd = true;
+	darwin = false;
+	posix = true;
+	windows = false;
+};
+
+# Explicitly indicate the compilers to use. (TODO: built Clang, not host Clang)
+which = import('which');
+cc = which.executable('cc');
+cxx = which.executable('c++');	
+
+# Much of our logic will wrap generic "GCC-like" functionality.
+gcc = import('gcc-like.fab', target=target);
+
+#
+# Clang specializations:
+#
+binary = function(objects:list[file[in]], binary:file[out], flags:list[string]): file
+{
+	# TODO: cc or cxx?
+	gcc.link_binary(cxx, objects, binary, flags)
+};
+
+compile = function(srcs:list[file], flags:list[string] = [],
+                   pic:bool = true, deps:list[file[in]] = []): list[file]
+{
+	# TODO: per-file extension detection and/or joining lists
+	gcc.compile(cc, srcs, flags, pic, deps)
+};
+
+library = function(objects:list[file[in]], libname:string, subdir:file = subdir,
+                   flags:list[string] = []): file
+{
+	# TODO: cc or cxx?
+	gcc.library(cc, objects, libname, subdir, flags)
+};

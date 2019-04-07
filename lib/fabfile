@@ -1,0 +1,8 @@
+libnames = [
+	'calendar'
+];
+
+libraries = foreach name <- libnames
+{
+	import('lib' + name)
+};

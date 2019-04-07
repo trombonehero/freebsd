@@ -1,0 +1,3 @@
+toolchain = import('share/fab/toolchain');
+
+libraries = import('lib');

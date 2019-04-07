@@ -1,0 +1,13 @@
+srcs = files(calendar.c easter.c);
+
+headers = toolchain.headers([ file('calendar.h')] );
+objects = toolchain.compile(srcs);
+library = toolchain.library(objects, 'calendar');
+
+man = toolchain.man_page(
+	src = file('calendar.3'),
+	links = [
+		'easterg' 'easterog' 'easteroj'
+		'gdate' 'jdate' 'ndaysg' 'ndaysj'
+		'week' 'weekday'
+	]);

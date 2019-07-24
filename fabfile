@@ -1,3 +1,28 @@
+#
+# Import C and shell toolchains.
+#
 toolchain = import('share/fab/toolchain');
 
+#
+# Set up staging area for final build products.
+#
+mkdir = toolchain.shell.mkdir;
+
+stage = record
+{
+	root = mkdir(builddir, 'staging');
+
+	lib = mkdir(root, 'lib');
+
+	usr = record
+	{
+		root = mkdir(root, 'usr');
+		include = mkdir(root, 'include');
+		lib = mkdir(root, 'lib');
+	};
+};
+
+#
+# Import descriptions of source directories.
+#
 libraries = import('lib');

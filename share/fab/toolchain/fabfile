@@ -1,16 +1,20 @@
-clang = import('clang.fab');
+#
+# Configure the host and target platforms.
+#
+platform = import('platform');
 
-binary = clang.binary;
-compile = clang.compile;
-library = clang.library;
+c = import('c', platform=platform).default;
+shell = import('shell.fab');
 
-headers = function(srcs:list[file], subdir:file = subdir): list[file]
+headers = function(srcs:list[file], dest_dir:file): list[file]
 {
-	# TODO: implement copying
-	[]
+	foreach src <- srcs
+	{
+		shell.copy(src, file(src.filename, subdir=dest_dir))
+	}
 };
 
-man_page = function(src:file, links:list[string] = []): list[file]
+man_page = function(src: file, links:list[string]=[]): list[file]
 {
 	# TODO: implement!
 	[]

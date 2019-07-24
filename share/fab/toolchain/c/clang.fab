@@ -1,0 +1,67 @@
+#
+# Support for the Clang (and Clang++) compiler.
+#
+# Arguments:
+#   force_colour    force the compiler to colour diagnostic messages even if not on a TTY
+#   lto             perform link-time optimization
+#   use_ir          compile via the LLVM Intermediate Representation (IR)
+#
+force_colour = args.colour_diagnostics ? false;
+lto = args.lto ? false;
+use_ir = lto or (args.ir ? false);
+
+
+# Find comnpiler binaries:
+which = import('which');
+cc = which.executable('clang');
+cxx = which.executable('clang++');
+
+# Most of this functionality is just a wrapper around generic "GCC-like" functionality.
+gcc = import('gcc-like.fab');
+
+#
+# Clang specializations:
+#
+compile_flags =
+	(if force_colour ['-fcolor-diagnostics'] else [])
+	+
+	(if use_ir ['-emit-llvm'] else [])
+	;
+
+linker_flags =
+	(if force_colour ['-fcolor-diagnostics'] else [])
+	+
+	(if lto ['-flto' '-O4'] else [])
+	;
+
+
+binary = function(objects:list[file[in]], binary:file[out],
+                  options:gcc.binary_options,
+                  extra_flags:list[string] = []): file
+{
+	flags = gcc.binary_flags(options);
+
+	# TODO: cc or cxx?
+	gcc.link_binary(cxx, objects, binary, linker_flags + flags)
+};
+
+compile = function(srcs:list[file],
+                   options:gcc.compiler_options=gcc.default_compile_options,
+                   extra_flags:list[string]=[],
+                   extra_header_dirs:list[file]=[],
+                   dependencies:list[file[in]]=[]
+	): list[file]
+{
+	# TODO: cc or cxx?
+	gcc.compile(cxx, srcs, options, compile_flags + extra_flags,
+	            extra_header_dirs, dependencies)
+};
+
+library = function(objects:list[file[in]], libname:string, subdir:file,
+                   options:gcc.library_options=gcc.default_library_options,
+                   extra_flags:list[string]=[]): file
+{
+	# TODO: cc or cxx?
+	gcc.library(cxx, objects, libname, subdir, options,
+	            extra_flags = linker_flags + extra_flags)
+};

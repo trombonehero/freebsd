@@ -1,4 +1,44 @@
 #
+# $FreeBSD$
+#
+# Build description for FreeBSD, written in the Fabrique language
+# (https://fabriquer.github.io).
+#
+
+#
+# Detect the host platform using the `platform` plugin but
+# hard-code the target platform... we're building FreeBSD.
+#
+host = import('platform');
+target = record
+{
+	architecture = args.arch ? host.architecture;
+	osname = 'FreeBSD';
+
+	bsd = true;
+	darwin = false;
+	linux = false;
+	posix = true;
+	windows = false;
+};
+
+print('Configuring FreeBSD build');
+print('');
+
+print('Host platform:');
+print(host);
+print('');
+
+print('Target platform:');
+print(host);
+print('');
+
+#
+# Import FreeBSD build options.
+#
+options = import('options.fab');
+
+#
 # Import C and shell toolchains.
 #
 toolchain = import('share/fab/toolchain');
@@ -21,6 +61,24 @@ stage = record
 		lib = mkdir(root, 'lib');
 	};
 };
+
+#
+# Set up include directories.
+#
+sysdir = file('sys');
+
+includes =
+	file('include')
+	::
+	(sysdir :: 'sys')
+	::
+	((sysdir :: target.architecture) :: 'include')
+	::
+	((file('lib') :: 'msun') :: 'src')
+	::
+	[stage.usr.include]
+	;
+
 
 #
 # Import descriptions of source directories.

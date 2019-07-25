@@ -1,0 +1,3 @@
+MK_CLANG_EXTRAS = false;
+MK_CLANG_FULL = false;
+MK_LLDB = false;

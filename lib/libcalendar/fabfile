@@ -1,6 +1,6 @@
 srcs = files(calendar.c easter.c);
 objects = toolchain.c.compile(srcs);
-library = toolchain.c.library(objects, 'calendar', stage.usr.lib);
+library = toolchain.c.shared_library(objects, 'calendar', stage.usr.lib);
 
 headers = toolchain.headers(files(calendar.h), stage.usr.include);
 

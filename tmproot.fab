@@ -1,0 +1,96 @@
+MachineHeaders = type record[sources:list[file], destination:string];
+
+target = args.target;
+
+shell = import('share/fab/toolchain/shell.fab');
+
+
+x86_headers:MachineHeaders = record
+{
+	sources = files(
+		_align.h _inttypes.h _limits.h _stdint.h _types.h
+		acpica_machdep.h apicreg.h apicvar.h apm_bios.h
+		bus.h busdma_impl.h dump.h elf.h endian.h
+		fdt.h float.h fpu.h frame.h init.h
+		legacyvar.h mca.h mptable.h ofw_machdep.h
+		pci_cfgreg.h psl.h ptrace.h pvclock.h
+		reg.h segments.h setjmp.h sigframe.h signal.h specialreg.h
+		stdarg.h sysarch.h trap.h
+		ucontext.h vdso.h vmware.h
+		,
+		subdir = 'sys/x86/include'
+	);
+	destination = 'x86';
+};
+
+
+
+includedir = file('tmproot/include', generated = true);
+
+headers = if target.architecture == 'amd64'
+{
+	machdep:list[MachineHeaders] = x86_headers ::
+	[
+		record {
+			sources = files(
+				_align.h _bus.h _inttypes.h _limits.h _stdint.h
+				_types.h acpica_machdep.h apm_bios.h asm.h
+				asmacros.h atomic.h bus.h bus_dma.h clock.h
+				counter.h cpu.h cpufunc.h cputypes.h
+				db_machdep.h dump.h elf.h endian.h exec.h fdt.h
+				float.h floatingpoint.h fpu.h frame.h
+				gdb_machdep.h ieeefp.h in_cksum.h intr_machdep.h
+				iodev.h kdb.h limits.h md_var.h memdev.h
+				metadata.h minidump.h mp_watchdog.h nexusvar.h
+				npx.h ofw_machdep.h param.h pcb.h pci_cfgreg.h
+				pcpu.h pmap.h pmc_mdep.h ppireg.h proc.h
+				profile.h psl.h ptrace.h pvclock.h reg.h reloc.h
+				resource.h runq.h segments.h setjmp.h sf_buf.h
+				sigframe.h signal.h smp.h specialreg.h stack.h
+				stdarg.h sysarch.h timerreg.h trap.h tss.h
+				ucontext.h varargs.h vdso.h vm.h vmm.h vmm_dev.h
+				vmm_instruction_emul.h vmparam.h
+				,
+				subdir = 'sys/amd64/include'
+			);
+			destination = 'machine';
+		}
+
+		record {
+			sources = files(
+				bios.h
+				display.h
+				,
+				subdir = 'sys/amd64/include/pc'
+			);
+			destination = 'machine/pc';
+		}
+
+		record {
+			sources = files(
+				hypercall.h
+				synch_bitops.h
+				xen-os.h
+				xenfunc.h
+				xenpmap.h
+				xenvar.h
+				,
+				subdir = 'sys/amd64/include/xen'
+			);
+			destination = 'machine/xen';
+		}
+	];
+
+	# TODO: flatten this into a list[file]
+	foreach headers:MachineHeaders <- machdep
+	{
+		destdir = includedir :: headers.destination;
+
+		foreach header <- headers.sources
+			shell.copy(header, destdir :: header.filename)
+	}
+}
+else [];
+
+
+all = headers;

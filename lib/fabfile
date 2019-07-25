@@ -1,3 +1,7 @@
+# $FreeBSD$
+
+clang = import('clang/fabfile', toolchain=toolchain);
+
 libnames = [
 	'calendar'
 ];
@@ -6,3 +10,5 @@ libraries = foreach name <- libnames
 {
 	import('lib' + name)
 };
+
+#libc = import('libc/fabfile');

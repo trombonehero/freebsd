@@ -18,6 +18,8 @@ cxx = which.executable('clang++');
 
 # Most of this functionality is just a wrapper around generic "GCC-like" functionality.
 gcc = import('gcc-like.fab');
+compiler_options = gcc.compiler_options;
+library_options = gcc.library_options;
 
 #
 # Clang specializations:
@@ -57,11 +59,16 @@ compile = function(srcs:list[file],
 	            extra_header_dirs, dependencies)
 };
 
-library = function(objects:list[file[in]], libname:string, subdir:file,
-                   options:gcc.library_options=gcc.default_library_options,
-                   extra_flags:list[string]=[]): file
+shared_library = function(objects:list[file[in]], libname:string, subdir:file,
+                          extra_flags:list[string] = []): file[out]
 {
-	# TODO: cc or cxx?
-	gcc.library(cxx, objects, libname, subdir, options,
-	            extra_flags = linker_flags + extra_flags)
+	gcc.library(cc, objects, libname, subdir,
+	            record { shared_library = true; }, extra_flags)
+};
+
+static_library = function(objects:list[file[in]], libname:string, subdir:file,
+                          extra_flags:list[string] = []): file[out]
+{
+	gcc.library(cc, objects, libname, subdir,
+	            record { shared_library = false; }, extra_flags)
 };

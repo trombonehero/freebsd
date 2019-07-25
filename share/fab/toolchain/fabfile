@@ -1,10 +1,31 @@
+# Expect to receive a function that can be uesd to look up binaries.
+#
+# This may be provided by the `which` plugin when we're using the build system's
+# toolchain, but sometimes we need to use a different (built) toolchain.
+which:(string)->file = args.which ? import('which').executable;
+
 #
 # Configure the host and target platforms.
 #
-platform = import('platform');
+host = import('platform');
+target = record
+{
+	architecture = host.architecture;
+	osname = 'freebsd';
 
-c = import('c', platform=platform).default;
+	bsd = true;
+	darwin = false;
+	posix = true;
+	windows = false;
+};
+
+c = import('c', platform=host).default;
 shell = import('shell.fab');
+
+tblgen = import('tblgen.fab',
+	clang_tblgen=which('clang-tblgen'),
+	llvm_tblgen=which('llvm-tblgen'),
+).tblgen;
 
 headers = function(srcs:list[file], dest_dir:file): list[file]
 {

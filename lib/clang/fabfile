@@ -7,9 +7,7 @@ toolchain:Toolchain = args.toolchain;
 llvmroot = subdir.subdir.subdir ::: 'contrib' ::: 'llvm';
 llvminclude = llvmroot ::: 'include' ::: 'llvm';
 llvmlibdir = llvmroot :: 'lib';
-
-gendir = toolchain.shell.mkdir(builddir :: 'gen', 'llvm', true);
-geninclude = buildroot ::: builddir ::: 'gen';
+gendir = toolchain.shell.mkdir(builddir, 'gen');
 
 #
 # TODO: build these options dynamically
@@ -56,7 +54,7 @@ llvm_options:toolchain.c.compiler_options = record
 		[
 			llvmroot + '/include'
 			file('lib/clang/include')
-			geninclude
+			gendir
 		]
 	};
 
@@ -1569,7 +1567,7 @@ tblgen_files = common_tblgen_files;
 generated_headers = foreach i <- tblgen_files
 {
 	source = file(i.source + '.td', subdir=i.dir);
-	target = file(i.target + '.inc', subdir=gendir);
+	target = file(i.target + '.inc', subdir=gendir::'llvm');
 
 	tblgen(source, target, i.gen_action)
 };

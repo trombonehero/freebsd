@@ -1733,5 +1733,5 @@ generated_headers = foreach i <- tblgen_files
 #.include <bsd.lib.mk>
 
 
-objs = toolchain.c.compile(srcs, llvm_options);
+objs = toolchain.c.compile(srcs, llvm_options, dependencies=generated_headers);
 #lib = toolchain.c.static_library(objs, 'llvm', subdir);

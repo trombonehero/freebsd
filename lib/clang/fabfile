@@ -1,7 +1,7 @@
 # $FreeBSD$
 
-# Be explicit about what kind of toolchain we expect to be passed.
-Toolchain = type record[tblgen:record[]];
+# Be a bit explicit about what kind of toolchain we expect to be passed.
+Toolchain = type record[c:record[], shell:record[], tblgen:record[]];
 toolchain:Toolchain = args.toolchain;
 
 llvmroot = subdir.subdir.subdir ::: 'contrib' ::: 'llvm';

@@ -1560,6 +1560,14 @@ common_tblgen_files =
 		target = 'llvm-lib/Options';
 		gen_action = '-gen-opt-parser-defs';
 	}
+
+	record
+	{
+		dir = llvmlibdir :: 'ToolDrivers/llvm-dlltool';
+		source = 'Options';
+		target = 'llvm-dlltool/Options';
+		gen_action = '-gen-opt-parser-defs';
+	}
 ];
 
 tblgen_files = common_tblgen_files;
@@ -1573,13 +1581,6 @@ generated_headers = foreach i <- tblgen_files
 };
 
 
-#llvm-dlltool/Options.inc: ${LLVM_SRCS}/lib/ToolDrivers/llvm-dlltool/Options.td
-#	${LLVM_TBLGEN} -gen-opt-parser-defs \
-#	    -I ${LLVM_SRCS}/include -d ${.TARGET}.d -o ${.TARGET} \
-#	    ${LLVM_SRCS}/lib/ToolDrivers/llvm-dlltool/Options.td
-#TGHDRS+=	llvm-dlltool/Options.inc
-#CFLAGS.DlltoolDriver.cpp+=	-I${.OBJDIR}/llvm-dlltool
-#
 ## Note: some rules are superfluous, not every combination is valid.
 #.for arch in \
 #	AArch64/AArch64 ARM/ARM BPF/BPF Mips/Mips PowerPC/PPC Sparc/Sparc \

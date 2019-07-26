@@ -1,0 +1,1172 @@
+# $FreeBSD$
+
+opts = args.options;
+
+TblGen = type record[
+	dir:file,
+	source:string,
+	target:string,
+	gen_action:string
+];
+
+common_tblgen_files:list[TblGen] =
+[
+	record
+	{
+		dir = llvminclude :: 'IR';
+		source = 'Attributes';
+		target = 'IR/Attributes';
+		gen_action = '-gen-attrs';
+	}
+
+	record
+	{
+		dir = llvmlibdir :: 'IR';
+		source = 'AttributesCompatFunc';
+		target = 'IR/AttributesCompatFunc';
+		gen_action = '-gen-attrs';
+	}
+
+	record
+	{
+		dir = llvminclude :: 'IR';
+		source = 'Intrinsics';
+		target = 'IR/IntrinsicEnums';
+		gen_action = '-gen-intrinsic-enums';
+	}
+
+	record
+	{
+		dir = llvminclude :: 'IR';
+		source = 'Intrinsics';
+		target = 'IR/IntrinsicImpl';
+		gen_action = '-gen-intrinsic-impl';
+	}
+
+	record
+	{
+		dir = llvmlibdir :: 'Transforms/InstCombine';
+		source = 'InstCombineTables';
+		target = 'InstCombineTables';
+		gen_action = '-gen-searchable-tables';
+	}
+
+	record
+	{
+		dir = llvmlibdir :: 'ToolDrivers/llvm-lib';
+		source = 'Options';
+		target = 'llvm-lib/Options';
+		gen_action = '-gen-opt-parser-defs';
+	}
+
+	record
+	{
+		dir = llvmlibdir :: 'ToolDrivers/llvm-dlltool';
+		source = 'Options';
+		target = 'llvm-dlltool/Options';
+		gen_action = '-gen-opt-parser-defs';
+	}
+];
+
+tblgen_files = common_tblgen_files;
+
+generated_headers = foreach i <- tblgen_files
+{
+	source = file(i.source + '.td', subdir=i.dir);
+	target = file(i.target + '.inc', subdir=gendir::'llvm');
+
+	tblgen(source, target, i.gen_action)
+};
+
+
+## Note: some rules are superfluous, not every combination is valid.
+#.for arch in \
+#	AArch64/AArch64 ARM/ARM BPF/BPF Mips/Mips PowerPC/PPC Sparc/Sparc \
+#	RISCV/RISCV X86/X86
+#. for hdr in \
+#	AsmMatcher/-gen-asm-matcher \
+#	AsmWriter1/-gen-asm-writer,-asmwriternum=1 \
+#	AsmWriter/-gen-asm-writer \
+#	CallingConv/-gen-callingconv \
+#	CodeEmitter/-gen-emitter \
+#	CompressInstEmitter/-gen-compress-inst-emitter \
+#	DAGISel/-gen-dag-isel \
+#	DisassemblerTables/-gen-disassembler \
+#	EVEX2VEXTables/-gen-x86-EVEX2VEX-tables \
+#	FastISel/-gen-fast-isel \
+#	GlobalISel/-gen-global-isel \
+#	InstrInfo/-gen-instr-info \
+#	MCCodeEmitter/-gen-emitter \
+#	MCPseudoLowering/-gen-pseudo-lowering \
+#	RegisterBank/-gen-register-bank \
+#	RegisterInfo/-gen-register-info \
+#	SubtargetInfo/-gen-subtarget \
+#	SystemOperands/-gen-searchable-tables \
+#	SystemRegister/-gen-searchable-tables
+#${arch:T}Gen${hdr:H}.inc: ${LLVM_SRCS}/lib/Target/${arch:H}/${arch:T}.td
+#	${LLVM_TBLGEN} ${hdr:T:C/,/ /g} \
+#	    -I ${LLVM_SRCS}/include -I ${LLVM_SRCS}/lib/Target/${arch:H} \
+#	    -d ${.TARGET}.d -o ${.TARGET} \
+#	    ${LLVM_SRCS}/lib/Target/${arch:H}/${arch:T}.td
+#. endfor
+#.endfor
+#.if ${MK_LLVM_TARGET_AARCH64} != "no"
+#TGHDRS+=	AArch64GenAsmMatcher.inc
+#TGHDRS+=	AArch64GenAsmWriter.inc
+#TGHDRS+=	AArch64GenAsmWriter1.inc
+#TGHDRS+=	AArch64GenCallingConv.inc
+#TGHDRS+=	AArch64GenDAGISel.inc
+#TGHDRS+=	AArch64GenDisassemblerTables.inc
+#TGHDRS+=	AArch64GenFastISel.inc
+#TGHDRS+=	AArch64GenGlobalISel.inc
+#TGHDRS+=	AArch64GenInstrInfo.inc
+#TGHDRS+=	AArch64GenMCCodeEmitter.inc
+#TGHDRS+=	AArch64GenMCPseudoLowering.inc
+#TGHDRS+=	AArch64GenRegisterBank.inc
+#TGHDRS+=	AArch64GenRegisterInfo.inc
+#TGHDRS+=	AArch64GenSubtargetInfo.inc
+#TGHDRS+=	AArch64GenSystemOperands.inc
+#.endif # MK_LLVM_TARGET_AARCH64
+#.if ${MK_LLVM_TARGET_ARM} != "no"
+#TGHDRS+=	ARMGenAsmMatcher.inc
+#TGHDRS+=	ARMGenAsmWriter.inc
+#TGHDRS+=	ARMGenCallingConv.inc
+#TGHDRS+=	ARMGenDAGISel.inc
+#TGHDRS+=	ARMGenDisassemblerTables.inc
+#TGHDRS+=	ARMGenFastISel.inc
+#TGHDRS+=	ARMGenGlobalISel.inc
+#TGHDRS+=	ARMGenInstrInfo.inc
+#TGHDRS+=	ARMGenMCCodeEmitter.inc
+#TGHDRS+=	ARMGenMCPseudoLowering.inc
+#TGHDRS+=	ARMGenRegisterBank.inc
+#TGHDRS+=	ARMGenRegisterInfo.inc
+#TGHDRS+=	ARMGenSubtargetInfo.inc
+#TGHDRS+=	ARMGenSystemRegister.inc
+#.endif # MK_LLVM_TARGET_ARM
+#.if ${MK_LLVM_TARGET_BPF} != "no"
+#TGHDRS+=	BPFGenAsmMatcher.inc
+#TGHDRS+=	BPFGenAsmWriter.inc
+#TGHDRS+=	BPFGenCallingConv.inc
+#TGHDRS+=	BPFGenDAGISel.inc
+#TGHDRS+=	BPFGenDisassemblerTables.inc
+#TGHDRS+=	BPFGenInstrInfo.inc
+#TGHDRS+=	BPFGenMCCodeEmitter.inc
+#TGHDRS+=	BPFGenRegisterInfo.inc
+#TGHDRS+=	BPFGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_BPF
+#.if ${MK_LLVM_TARGET_MIPS} != "no"
+#TGHDRS+=	MipsGenAsmMatcher.inc
+#TGHDRS+=	MipsGenAsmWriter.inc
+#TGHDRS+=	MipsGenCallingConv.inc
+#TGHDRS+=	MipsGenDAGISel.inc
+#TGHDRS+=	MipsGenDisassemblerTables.inc
+#TGHDRS+=	MipsGenFastISel.inc
+#TGHDRS+=	MipsGenGlobalISel.inc
+#TGHDRS+=	MipsGenInstrInfo.inc
+#TGHDRS+=	MipsGenMCCodeEmitter.inc
+#TGHDRS+=	MipsGenMCPseudoLowering.inc
+#TGHDRS+=	MipsGenRegisterBank.inc
+#TGHDRS+=	MipsGenRegisterInfo.inc
+#TGHDRS+=	MipsGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_MIPS
+#.if ${MK_LLVM_TARGET_POWERPC} != "no"
+#TGHDRS+=	PPCGenAsmMatcher.inc
+#TGHDRS+=	PPCGenAsmWriter.inc
+#TGHDRS+=	PPCGenCallingConv.inc
+#TGHDRS+=	PPCGenDAGISel.inc
+#TGHDRS+=	PPCGenDisassemblerTables.inc
+#TGHDRS+=	PPCGenFastISel.inc
+#TGHDRS+=	PPCGenInstrInfo.inc
+#TGHDRS+=	PPCGenMCCodeEmitter.inc
+#TGHDRS+=	PPCGenRegisterInfo.inc
+#TGHDRS+=	PPCGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_POWERPC
+#.if ${MK_LLVM_TARGET_RISCV} != "no"
+#TGHDRS+=	RISCVGenAsmMatcher.inc
+#TGHDRS+=	RISCVGenAsmWriter.inc
+#TGHDRS+=	RISCVGenCallingConv.inc
+#TGHDRS+=	RISCVGenCompressInstEmitter.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenDisassemblerTables.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenInstrInfo.inc
+#TGHDRS+=	RISCVGenMCCodeEmitter.inc
+#TGHDRS+=	RISCVGenMCPseudoLowering.inc
+#TGHDRS+=	RISCVGenRegisterInfo.inc
+#TGHDRS+=	RISCVGenSubtargetInfo.inc
+#TGHDRS+=	RISCVGenSystemOperands.inc
+#.endif # MK_LLVM_TARGET_RISCV
+#.if ${MK_LLVM_TARGET_SPARC} != "no"
+#TGHDRS+=	SparcGenAsmMatcher.inc
+#TGHDRS+=	SparcGenAsmWriter.inc
+#TGHDRS+=	SparcGenCallingConv.inc
+#TGHDRS+=	SparcGenDAGISel.inc
+#TGHDRS+=	SparcGenDisassemblerTables.inc
+#TGHDRS+=	SparcGenInstrInfo.inc
+#TGHDRS+=	SparcGenMCCodeEmitter.inc
+#TGHDRS+=	SparcGenRegisterInfo.inc
+#TGHDRS+=	SparcGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_SPARC
+#.if ${MK_LLVM_TARGET_X86} != "no"
+#TGHDRS+=	X86GenAsmMatcher.inc
+#TGHDRS+=	X86GenAsmWriter.inc
+#TGHDRS+=	X86GenAsmWriter1.inc
+#TGHDRS+=	X86GenCallingConv.inc
+#TGHDRS+=	X86GenDAGISel.inc
+#TGHDRS+=	X86GenDisassemblerTables.inc
+#TGHDRS+=	X86GenEVEX2VEXTables.inc
+#TGHDRS+=	X86GenFastISel.inc
+#TGHDRS+=	X86GenGlobalISel.inc
+#TGHDRS+=	X86GenInstrInfo.inc
+#TGHDRS+=	X86GenRegisterBank.inc
+#TGHDRS+=	X86GenRegisterInfo.inc
+#TGHDRS+=	X86GenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_X86
+
+#.include "../llvm.build.mk"
+#.include <bsd.lib.mk>
+
+
+sources =
+	import('Analysis.fab').sources
+	+
+	{
+		subdir = llvmlibdir :: 'AsmParser';
+		files(LLLexer.cpp LLParser.cpp Parser.cpp)
+	}
+	+
+	{
+		subdir = llvmlibdir :: 'BinaryFormat';
+		files(Dwarf.cpp Magic.cpp Wasm.cpp)
+	}
+	+ import('Bitcode.fab').sources
+	+ import('CodeGen.fab').sources
+	+ import('DebugInfo.fab').sources
++
+{
+	subdir = llvmlibdir :: 'Demangle';
+
+	files(ItaniumDemangle.cpp)
+	+
+	if opts.miw files(MicrosoftDemangle.cpp MicrosoftDemangleNodes.cpp) else []
+}
++
+{
+	subdir = llvmlibdir :: 'ExecutionEngine';
+
+	if opts.clang_extras
+	{
+		files(
+			CompileOnDemandLayer.cpp Core.cpp ExecutionUtils.cpp
+			IRCompileLayer.cpp IRTransformLayer.cpp IndirectionUtils.cpp
+			JITTargetMachineBuilder.cpp LLJIT.cpp Layer.cpp LazyReexports.cpp
+			Legacy.cpp NullResolver.cpp OrcABISupport.cpp OrcCBindings.cpp
+			OrcError.cpp OrcMCJITReplacement.cpp RPCUtils.cpp
+			RTDyldObjectLinkingLayer.cpp ThreadSafeModule.cpp
+			,
+			subdir = 'Orc'
+		)
+	}
+	else []
+	+
+	if xdb
+	{
+		files(
+			ExecutionEngine.cpp ExecutionEngineBindings.cpp
+			GDBRegistrationListener.cpp SectionMemoryManager.cpp
+			TargetSelect.cpp
+		)
+		+
+		files(
+			Execution.cpp ExternalFunctions.cpp Interpreter.cpp
+			,
+			subdir = 'Interpreter'
+		)
+		+
+		files(MCJIT.cpp, subdir = 'MCJIT')
+		+
+		files(
+			JITSymbol.cpp RTDyldMemoryManager.cpp RuntimeDyld.cpp
+			RuntimeDyldCOFF.cpp RuntimeDyldChecker.cpp
+			RuntimeDyldELF.cpp RuntimeDyldMachO.cpp
+			Targets/RuntimeDyldELFMips.cpp
+			,
+			subdir = 'RuntimeDyld'
+		)
+	}
+	else []
+}
++
+{
+	subdir = llvmlibdir :: 'IR';
+
+	files(
+		AsmWriter.cpp Attributes.cpp AutoUpgrade.cpp BasicBlock.cpp Comdat.cpp
+		ConstantFold.cpp ConstantRange.cpp Constants.cpp Core.cpp DIBuilder.cpp
+		DataLayout.cpp DebugInfo.cpp DebugInfoMetadata.cpp DebugLoc.cpp
+		DiagnosticHandler.cpp DiagnosticInfo.cpp DiagnosticPrinter.cpp
+		DomTreeUpdater.cpp Dominators.cpp Function.cpp GVMaterializer.cpp
+		Globals.cpp IRBuilder.cpp IRPrintingPasses.cpp InlineAsm.cpp
+		Instruction.cpp Instructions.cpp IntrinsicInst.cpp LLVMContext.cpp
+		LLVMContextImpl.cpp LegacyPassManager.cpp MDBuilder.cpp Mangler.cpp
+		Metadata.cpp Module.cpp ModuleSummaryIndex.cpp Operator.cpp
+		OptBisect.cpp Pass.cpp PassInstrumentation.cpp PassManager.cpp
+		PassRegistry.cpp PassTimingInfo.cpp ProfileSummary.cpp
+		SafepointIRVerifier.cpp Statepoint.cpp Type.cpp TypeFinder.cpp Use.cpp
+		User.cpp Value.cpp ValueSymbolTable.cpp Verifier.cpp
+	)
+}
++
+{
+	subdir = llvmlibdir :: 'IRReader';
+
+	files(IRReader.cpp)
+}
++
+{
+	subdir = llvmlibdir :: 'LTO';
+
+	files(LTO.cpp LTOBackend.cpp UpdateCompilerUsed.cpp)
+	+
+	if opts.exl
+	{
+		files(
+			Caching.cpp
+			LTOCodeGenerator.cpp
+			LTOModule.cpp
+			SummaryBasedOptimizations.cpp
+			ThinLTOCodeGenerator.cpp
+		)
+	}
+	else []
+}
++
+{
+	subdir = llvmlibdir :: 'LineEditor';
+
+	files(LineEditor.cpp)
+}
++
+{
+	subdir = llvmlibdir :: 'Linker';
+
+	files(IRMover.cpp LinkModules.cpp)
+}
++
+{
+	subdir = llvmlibdir :: 'MC';
+
+	files(
+		ConstantPools.cpp ELFObjectWriter.cpp MCAsmBackend.cpp MCAsmInfo.cpp
+		MCAsmInfoCOFF.cpp MCAsmInfoDarwin.cpp MCAsmInfoELF.cpp MCAsmMacro.cpp
+		MCAsmStreamer.cpp MCAssembler.cpp MCCodeEmitter.cpp MCCodePadder.cpp
+		MCCodeView.cpp MCContext.cpp MCDisassembler/MCRelocationInfo.cpp
+		MCDwarf.cpp MCELFObjectTargetWriter.cpp MCELFStreamer.cpp MCExpr.cpp
+		MCFragment.cpp MCInst.cpp MCInstPrinter.cpp MCInstrAnalysis.cpp
+		MCInstrDesc.cpp MCLinkerOptimizationHint.cpp MCMachOStreamer.cpp
+		MCMachObjectTargetWriter.cpp MCNullStreamer.cpp MCObjectFileInfo.cpp
+		MCObjectStreamer.cpp MCObjectWriter.cpp MCRegisterInfo.cpp
+		MCSchedule.cpp MCSection.cpp MCSectionCOFF.cpp MCSectionELF.cpp
+		MCSectionMachO.cpp MCSectionWasm.cpp MCStreamer.cpp MCSubtargetInfo.cpp
+		MCSymbol.cpp MCSymbolELF.cpp MCTargetOptions.cpp MCValue.cpp
+		MCWasmStreamer.cpp MCWin64EH.cpp MCWinCOFFStreamer.cpp MCWinEH.cpp
+		MachObjectWriter.cpp StringTableBuilder.cpp SubtargetFeature.cpp
+		WasmObjectWriter.cpp WinCOFFObjectWriter.cpp
+	)
+	+
+	files(
+		AsmLexer.cpp AsmParser.cpp COFFAsmParser.cpp DarwinAsmParser.cpp
+		ELFAsmParser.cpp MCAsmLexer.cpp MCAsmParser.cpp
+		MCAsmParserExtension.cpp MCTargetAsmParser.cpp WasmAsmParser.cpp
+		,
+		subdir = 'MCParser'
+	)
+	+
+	(if opts.xdl files(Disassembler.cpp, subdir = 'MCDisassembler') else [])
+	+
+	(if opts.xdw
+	{
+		files(
+			MCDisassembler.cpp MCExternalSymbolizer.cpp MCSymbolizer.cpp
+			,
+			subdir = 'MCDisassembler'
+		)
+	}
+	else [])
+}
++
+{
+	subdir = llvmlibdir :: 'MCA';
+
+	files(
+		Context.cpp HWEventListener.cpp InstrBuilder.cpp Instruction.cpp
+		Pipeline.cpp Support.cpp
+	)
+	+
+	files(
+		HardwareUnit.cpp LSUnit.cpp RegisterFile.cpp ResourceManager.cpp
+		RetireControlUnit.cpp Scheduler.cpp
+		,
+		subdir = 'HardwareUnits'
+	)
+	+
+	files(
+		DispatchStage.cpp EntryStage.cpp ExecuteStage.cpp
+		InstructionTables.cpp RetireStage.cpp Stage.cpp
+		,
+		subdir = 'Stages'
+	)
+
+}
++
+{
+	subdir = llvmlibdir :: 'Object';
+
+	files(
+		Archive.cpp ArchiveWriter.cpp Binary.cpp COFFImportFile.cpp
+		COFFModuleDefinition.cpp COFFObjectFile.cpp Decompressor.cpp ELF.cpp
+		ELFObjectFile.cpp Error.cpp IRObjectFile.cpp IRSymtab.cpp
+		MachOObjectFile.cpp MachOUniversal.cpp ModuleSymbolTable.cpp
+		ObjectFile.cpp RecordStreamer.cpp SymbolicFile.cpp WasmObjectFile.cpp
+		WindowsResource.cpp
+	)
+	+
+	if opts.clang_extras files(Object.cpp) else []
+	+
+	if opts.miw files(SymbolSize.cpp) else []
+}
++
+{
+	subdir = llvmlibdir :: 'ObjectYAML';
+	files(COFFYAML.cpp DWARFYAML.cpp ELFYAML.cpp MachOYAML.cpp)
+	+
+	if opts.clang_extras
+	{
+		files(
+			CodeViewYAMLDebugSections.cpp CodeViewYAMLSymbols.cpp
+			CodeViewYAMLTypes.cpp YAML.cpp
+		)
+	}
+	else []
+}
++
+{
+	subdir = llvmlibdir :: 'Option';
+	files(Arg.cpp ArgList.cpp OptTable.cpp Option.cpp)
+}
++
+{
+	subdir = llvmlibdir :: 'Passes';
+	files(PassBuilder.cpp)
+	+
+	if opts.clang_extras files(PassPlugin.cpp StandardInstrumentations.cpp) else []
+}
++
+{
+	subdir = llvmlibdir :: '';
+	files()
+}
++
+{
+	subdir = llvmlibdir :: 'ProfileData';
+
+	files(
+		Coverage/CoverageMapping.cpp Coverage/CoverageMappingReader.cpp
+		Coverage/CoverageMappingWriter.cpp GCOV.cpp InstrProf.cpp
+		InstrProfReader.cpp InstrProfWriter.cpp
+		ProfileSummaryBuilder.cpp SampleProf.cpp SampleProfReader.cpp
+		SampleProfWriter.cpp
+	)
+}
++
+{
+	subdir = llvmlibdir :: 'Support';
+
+	files(
+		AArch64TargetParser.cpp APFloat.cpp APInt.cpp APSInt.cpp
+		ARMAttributeParser.cpp ARMBuildAttrs.cpp ARMTargetParser.cpp
+		Allocator.cpp Atomic.cpp BinaryStreamError.cpp BinaryStreamReader.cpp
+		BinaryStreamRef.cpp BinaryStreamWriter.cpp BlockFrequency.cpp
+		BranchProbability.cpp BuryPointer.cpp CachePruning.cpp Chrono.cpp
+		CodeGenCoverage.cpp CommandLine.cpp Compression.cpp ConvertUTF.cpp
+		ConvertUTFWrapper.cpp CrashRecoveryContext.cpp DAGDeltaAlgorithm.cpp
+		DJB.cpp DataExtractor.cpp Debug.cpp DebugCounter.cpp DeltaAlgorithm.cpp
+		DynamicLibrary.cpp Errno.cpp Error.cpp ErrorHandling.cpp FoldingSet.cpp
+		FormatVariadic.cpp FormattedStream.cpp GlobPattern.cpp GraphWriter.cpp
+		Hashing.cpp Host.cpp InitLLVM.cpp IntEqClasses.cpp IntervalMap.cpp
+		ItaniumManglingCanonicalizer.cpp JSON.cpp JamCRC.cpp KnownBits.cpp
+		LEB128.cpp LineIterator.cpp Locale.cpp LockFileManager.cpp
+		LowLevelType.cpp MD5.cpp ManagedStatic.cpp MathExtras.cpp
+		MemoryBuffer.cpp Mutex.cpp NativeFormatting.cpp Options.cpp Path.cpp
+		PluginLoader.cpp PrettyStackTrace.cpp Process.cpp Program.cpp
+		RWMutex.cpp RandomNumberGenerator.cpp Regex.cpp SHA1.cpp
+		ScaledNumber.cpp ScopedPrinter.cpp Signals.cpp SmallPtrSet.cpp
+		SmallVector.cpp SourceMgr.cpp SpecialCaseList.cpp Statistic.cpp
+		StringExtras.cpp StringMap.cpp StringRef.cpp StringSaver.cpp
+		SymbolRemappingReader.cpp TargetParser.cpp TargetRegistry.cpp
+		ThreadLocal.cpp ThreadPool.cpp Threading.cpp Timer.cpp
+		ToolOutputFile.cpp TrigramIndex.cpp Triple.cpp Twine.cpp Unicode.cpp
+		UnicodeCaseFold.cpp Valgrind.cpp VirtualFileSystem.cpp VersionTuple.cpp
+		WithColor.cpp YAMLParser.cpp YAMLTraits.cpp
+
+		circular_raw_ostream.cpp raw_os_ostream.cpp raw_ostream.cpp
+	)
+	#regcomp.c regerror.c regexec.c regfree.c regstrlcpy.c xxhash.cpp
+	+
+	if opts.clang_extras files(FileUtilities.cpp SystemUtils.cpp) else []
+	+
+	if opts.exl files(FileOutputBuffer.cpp) else []
+	+
+	if opts.lld files(Parallel.cpp TarWriter.cpp) else []
+	+
+	if opts.miw files(COM.cpp) else []
+	+
+	if opts.xdl files(Memory.cpp) else []
+}
++
+{
+	subdir = llvmlibdir :: 'TableGen';
+
+	files(
+		Error.cpp JSONBackend.cpp Main.cpp Record.cpp SetTheory.cpp
+		StringMatcher.cpp TGLexer.cpp TGParser.cpp TableGenBackend.cpp
+	)
+}
+#.if ${MK_LLVM_TARGET_AARCH64} != "no"
+#		Target/AArch64/AArch64A53Fix835769.cpp
+#		Target/AArch64/AArch64A57FPLoadBalancing.cpp
+#		Target/AArch64/AArch64AdvSIMDScalarPass.cpp
+#		Target/AArch64/AArch64AsmPrinter.cpp
+#		Target/AArch64/AArch64BranchTargets.cpp
+#		Target/AArch64/AArch64CallLowering.cpp
+#		Target/AArch64/AArch64CleanupLocalDynamicTLSPass.cpp
+#		Target/AArch64/AArch64CollectLOH.cpp
+#		Target/AArch64/AArch64CompressJumpTables.cpp
+#		Target/AArch64/AArch64CondBrTuning.cpp
+#		Target/AArch64/AArch64ConditionOptimizer.cpp
+#		Target/AArch64/AArch64ConditionalCompares.cpp
+#		Target/AArch64/AArch64DeadRegisterDefinitionsPass.cpp
+#		Target/AArch64/AArch64ExpandPseudoInsts.cpp
+#		Target/AArch64/AArch64FalkorHWPFFix.cpp
+#		Target/AArch64/AArch64FastISel.cpp
+#		Target/AArch64/AArch64FrameLowering.cpp
+#		Target/AArch64/AArch64ISelDAGToDAG.cpp
+#		Target/AArch64/AArch64ISelLowering.cpp
+#		Target/AArch64/AArch64InstrInfo.cpp
+#		Target/AArch64/AArch64InstructionSelector.cpp
+#		Target/AArch64/AArch64LegalizerInfo.cpp
+#		Target/AArch64/AArch64LoadStoreOptimizer.cpp
+#		Target/AArch64/AArch64MCInstLower.cpp
+#		Target/AArch64/AArch64MacroFusion.cpp
+#		Target/AArch64/AArch64PBQPRegAlloc.cpp
+#		Target/AArch64/AArch64PreLegalizerCombiner.cpp
+#		Target/AArch64/AArch64PromoteConstant.cpp
+#		Target/AArch64/AArch64RedundantCopyElimination.cpp
+#		Target/AArch64/AArch64RegisterBankInfo.cpp
+#		Target/AArch64/AArch64RegisterInfo.cpp
+#		Target/AArch64/AArch64SIMDInstrOpt.cpp
+#		Target/AArch64/AArch64SelectionDAGInfo.cpp
+#		Target/AArch64/AArch64SpeculationHardening.cpp
+#		Target/AArch64/AArch64StorePairSuppress.cpp
+#		Target/AArch64/AArch64Subtarget.cpp
+#		Target/AArch64/AArch64TargetMachine.cpp
+#		Target/AArch64/AArch64TargetObjectFile.cpp
+#		Target/AArch64/AArch64TargetTransformInfo.cpp
+#		Target/AArch64/AsmParser/AArch64AsmParser.cpp
+#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64Disassembler.cpp
+#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64ExternalSymbolizer.cpp
+#		Target/AArch64/InstPrinter/AArch64InstPrinter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
+#		Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64ELFStreamer.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCAsmInfo.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCCodeEmitter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCExpr.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCTargetDesc.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MachObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64TargetStreamer.cpp
+#		Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64WinCOFFStreamer.cpp
+#		Target/AArch64/TargetInfo/AArch64TargetInfo.cpp
+#		Target/AArch64/Utils/AArch64BaseInfo.cpp
+#.endif # MK_LLVM_TARGET_AARCH64
+#.if ${MK_LLVM_TARGET_ARM} != "no"
+#		Target/ARM/A15SDOptimizer.cpp
+#		Target/ARM/ARMAsmPrinter.cpp
+#		Target/ARM/ARMBaseInstrInfo.cpp
+#		Target/ARM/ARMBaseRegisterInfo.cpp
+#		Target/ARM/ARMCallLowering.cpp
+#		Target/ARM/ARMCodeGenPrepare.cpp
+#		Target/ARM/ARMComputeBlockSize.cpp
+#		Target/ARM/ARMConstantIslandPass.cpp
+#		Target/ARM/ARMConstantPoolValue.cpp
+#		Target/ARM/ARMExpandPseudoInsts.cpp
+#		Target/ARM/ARMFastISel.cpp
+#		Target/ARM/ARMFrameLowering.cpp
+#		Target/ARM/ARMHazardRecognizer.cpp
+#		Target/ARM/ARMISelDAGToDAG.cpp
+#		Target/ARM/ARMISelLowering.cpp
+#		Target/ARM/ARMInstrInfo.cpp
+#		Target/ARM/ARMInstructionSelector.cpp
+#		Target/ARM/ARMLegalizerInfo.cpp
+#		Target/ARM/ARMLoadStoreOptimizer.cpp
+#		Target/ARM/ARMMCInstLower.cpp
+#		Target/ARM/ARMMachineFunctionInfo.cpp
+#		Target/ARM/ARMMacroFusion.cpp
+#		Target/ARM/ARMOptimizeBarriersPass.cpp
+#		Target/ARM/ARMParallelDSP.cpp
+#		Target/ARM/ARMRegisterBankInfo.cpp
+#		Target/ARM/ARMRegisterInfo.cpp
+#		Target/ARM/ARMSelectionDAGInfo.cpp
+#		Target/ARM/ARMSubtarget.cpp
+#		Target/ARM/ARMTargetMachine.cpp
+#		Target/ARM/ARMTargetObjectFile.cpp
+#		Target/ARM/ARMTargetTransformInfo.cpp
+#		Target/ARM/AsmParser/ARMAsmParser.cpp
+#		Target/ARM/Disassembler/ARMDisassembler.cpp
+#		Target/ARM/InstPrinter/ARMInstPrinter.cpp
+#		Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
+#		Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
+#		Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
+#		Target/ARM/MCTargetDesc/ARMMCAsmInfo.cpp
+#		Target/ARM/MCTargetDesc/ARMMCCodeEmitter.cpp
+#		Target/ARM/MCTargetDesc/ARMMCExpr.cpp
+#		Target/ARM/MCTargetDesc/ARMMCTargetDesc.cpp
+#		Target/ARM/MCTargetDesc/ARMMachORelocationInfo.cpp
+#		Target/ARM/MCTargetDesc/ARMMachObjectWriter.cpp
+#		Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
+#		Target/ARM/MCTargetDesc/ARMUnwindOpAsm.cpp
+#		Target/ARM/MCTargetDesc/ARMWinCOFFObjectWriter.cpp
+#		Target/ARM/MCTargetDesc/ARMWinCOFFStreamer.cpp
+#		Target/ARM/MLxExpansionPass.cpp
+#		Target/ARM/TargetInfo/ARMTargetInfo.cpp
+#		Target/ARM/Thumb1FrameLowering.cpp
+#		Target/ARM/Thumb1InstrInfo.cpp
+#		Target/ARM/Thumb2ITBlockPass.cpp
+#		Target/ARM/Thumb2InstrInfo.cpp
+#		Target/ARM/Thumb2SizeReduction.cpp
+#		Target/ARM/ThumbRegisterInfo.cpp
+#		Target/ARM/Utils/ARMBaseInfo.cpp
+#.endif # MK_LLVM_TARGET_ARM
+#.if ${MK_LLVM_TARGET_BPF} != "no"
+#		Target/BPF/AsmParser/BPFAsmParser.cpp
+#		Target/BPF/BPFAsmPrinter.cpp
+#		Target/BPF/BPFFrameLowering.cpp
+#		Target/BPF/BPFISelDAGToDAG.cpp
+#		Target/BPF/BPFISelLowering.cpp
+#		Target/BPF/BPFInstrInfo.cpp
+#		Target/BPF/BPFMCInstLower.cpp
+#		Target/BPF/BPFMIChecking.cpp
+#		Target/BPF/BPFMIPeephole.cpp
+#		Target/BPF/BPFRegisterInfo.cpp
+#		Target/BPF/BPFSelectionDAGInfo.cpp
+#		Target/BPF/BPFSubtarget.cpp
+#		Target/BPF/BPFTargetMachine.cpp
+#		Target/BPF/BTFDebug.cpp
+#		Target/BPF/Disassembler/BPFDisassembler.cpp
+#		Target/BPF/InstPrinter/BPFInstPrinter.cpp
+#		Target/BPF/MCTargetDesc/BPFAsmBackend.cpp
+#		Target/BPF/MCTargetDesc/BPFELFObjectWriter.cpp
+#		Target/BPF/MCTargetDesc/BPFMCCodeEmitter.cpp
+#		Target/BPF/MCTargetDesc/BPFMCTargetDesc.cpp
+#		Target/BPF/TargetInfo/BPFTargetInfo.cpp
+#.endif # MK_LLVM_TARGET_BPF
+#.if ${MK_LLVM_TARGET_MIPS} != "no"
+#		Target/Mips/AsmParser/MipsAsmParser.cpp
+#SRCS_XDW+=	Target/Mips/Disassembler/MipsDisassembler.cpp
+#		Target/Mips/InstPrinter/MipsInstPrinter.cpp
+#		Target/Mips/MCTargetDesc/MipsABIFlagsSection.cpp
+#		Target/Mips/MCTargetDesc/MipsABIInfo.cpp
+#		Target/Mips/MCTargetDesc/MipsAsmBackend.cpp
+#		Target/Mips/MCTargetDesc/MipsELFObjectWriter.cpp
+#		Target/Mips/MCTargetDesc/MipsELFStreamer.cpp
+#		Target/Mips/MCTargetDesc/MipsMCAsmInfo.cpp
+#		Target/Mips/MCTargetDesc/MipsMCCodeEmitter.cpp
+#		Target/Mips/MCTargetDesc/MipsMCExpr.cpp
+#		Target/Mips/MCTargetDesc/MipsMCTargetDesc.cpp
+#		Target/Mips/MCTargetDesc/MipsNaClELFStreamer.cpp
+#		Target/Mips/MCTargetDesc/MipsOptionRecord.cpp
+#		Target/Mips/MCTargetDesc/MipsTargetStreamer.cpp
+#		Target/Mips/MicroMipsSizeReduction.cpp
+#		Target/Mips/Mips16FrameLowering.cpp
+#		Target/Mips/Mips16HardFloat.cpp
+#		Target/Mips/Mips16HardFloatInfo.cpp
+#		Target/Mips/Mips16ISelDAGToDAG.cpp
+#		Target/Mips/Mips16ISelLowering.cpp
+#		Target/Mips/Mips16InstrInfo.cpp
+#		Target/Mips/Mips16RegisterInfo.cpp
+#		Target/Mips/MipsAnalyzeImmediate.cpp
+#		Target/Mips/MipsAsmPrinter.cpp
+#		Target/Mips/MipsBranchExpansion.cpp
+#		Target/Mips/MipsCCState.cpp
+#		Target/Mips/MipsCallLowering.cpp
+#		Target/Mips/MipsConstantIslandPass.cpp
+#		Target/Mips/MipsDelaySlotFiller.cpp
+#		Target/Mips/MipsExpandPseudo.cpp
+#		Target/Mips/MipsFastISel.cpp
+#		Target/Mips/MipsFrameLowering.cpp
+#		Target/Mips/MipsISelDAGToDAG.cpp
+#		Target/Mips/MipsISelLowering.cpp
+#		Target/Mips/MipsInstrInfo.cpp
+#		Target/Mips/MipsInstructionSelector.cpp
+#		Target/Mips/MipsLegalizerInfo.cpp
+#		Target/Mips/MipsMCInstLower.cpp
+#		Target/Mips/MipsMachineFunction.cpp
+#		Target/Mips/MipsModuleISelDAGToDAG.cpp
+#		Target/Mips/MipsOptimizePICCall.cpp
+#		Target/Mips/MipsOs16.cpp
+#		Target/Mips/MipsPreLegalizerCombiner.cpp
+#		Target/Mips/MipsRegisterBankInfo.cpp
+#		Target/Mips/MipsRegisterInfo.cpp
+#		Target/Mips/MipsSEFrameLowering.cpp
+#		Target/Mips/MipsSEISelDAGToDAG.cpp
+#		Target/Mips/MipsSEISelLowering.cpp
+#		Target/Mips/MipsSEInstrInfo.cpp
+#		Target/Mips/MipsSERegisterInfo.cpp
+#		Target/Mips/MipsSubtarget.cpp
+#		Target/Mips/MipsTargetMachine.cpp
+#		Target/Mips/MipsTargetObjectFile.cpp
+#		Target/Mips/TargetInfo/MipsTargetInfo.cpp
+#.endif # MK_LLVM_TARGET_MIPS
+#.if ${MK_LLVM_TARGET_POWERPC} != "no"
+#		Target/PowerPC/AsmParser/PPCAsmParser.cpp
+#		Target/PowerPC/Disassembler/PPCDisassembler.cpp
+#		Target/PowerPC/InstPrinter/PPCInstPrinter.cpp
+#		Target/PowerPC/MCTargetDesc/PPCAsmBackend.cpp
+#		Target/PowerPC/MCTargetDesc/PPCELFObjectWriter.cpp
+#		Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp
+#		Target/PowerPC/MCTargetDesc/PPCMCCodeEmitter.cpp
+#		Target/PowerPC/MCTargetDesc/PPCMCExpr.cpp
+#		Target/PowerPC/MCTargetDesc/PPCMCTargetDesc.cpp
+#		Target/PowerPC/MCTargetDesc/PPCMachObjectWriter.cpp
+#		Target/PowerPC/MCTargetDesc/PPCPredicates.cpp
+#		Target/PowerPC/PPCAsmPrinter.cpp
+#		Target/PowerPC/PPCBoolRetToInt.cpp
+#		Target/PowerPC/PPCBranchCoalescing.cpp
+#		Target/PowerPC/PPCBranchSelector.cpp
+#		Target/PowerPC/PPCCCState.cpp
+#		Target/PowerPC/PPCCTRLoops.cpp
+#		Target/PowerPC/PPCEarlyReturn.cpp
+#		Target/PowerPC/PPCExpandISEL.cpp
+#		Target/PowerPC/PPCFastISel.cpp
+#		Target/PowerPC/PPCFrameLowering.cpp
+#		Target/PowerPC/PPCHazardRecognizers.cpp
+#		Target/PowerPC/PPCISelDAGToDAG.cpp
+#		Target/PowerPC/PPCISelLowering.cpp
+#		Target/PowerPC/PPCInstrInfo.cpp
+#		Target/PowerPC/PPCLoopPreIncPrep.cpp
+#		Target/PowerPC/PPCMCInstLower.cpp
+#		Target/PowerPC/PPCMIPeephole.cpp
+#		Target/PowerPC/PPCMachineFunctionInfo.cpp
+#		Target/PowerPC/PPCPreEmitPeephole.cpp
+#		Target/PowerPC/PPCQPXLoadSplat.cpp
+#		Target/PowerPC/PPCReduceCRLogicals.cpp
+#		Target/PowerPC/PPCRegisterInfo.cpp
+#		Target/PowerPC/PPCSubtarget.cpp
+#		Target/PowerPC/PPCTLSDynamicCall.cpp
+#		Target/PowerPC/PPCTOCRegDeps.cpp
+#		Target/PowerPC/PPCTargetMachine.cpp
+#		Target/PowerPC/PPCTargetObjectFile.cpp
+#		Target/PowerPC/PPCTargetTransformInfo.cpp
+#		Target/PowerPC/PPCVSXCopy.cpp
+#		Target/PowerPC/PPCVSXFMAMutate.cpp
+#		Target/PowerPC/PPCVSXSwapRemoval.cpp
+#		Target/PowerPC/TargetInfo/PowerPCTargetInfo.cpp
+#.endif # MK_LLVM_TARGET_POWERPC
+#.if ${MK_LLVM_TARGET_RISCV} != "no"
+#		Target/RISCV/AsmParser/RISCVAsmParser.cpp
+#		Target/RISCV/Disassembler/RISCVDisassembler.cpp
+#		Target/RISCV/InstPrinter/RISCVInstPrinter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVAsmBackend.cpp
+#		Target/RISCV/MCTargetDesc/RISCVELFObjectWriter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVELFStreamer.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCAsmInfo.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCCodeEmitter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCExpr.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCTargetDesc.cpp
+#		Target/RISCV/MCTargetDesc/RISCVTargetStreamer.cpp
+#		Target/RISCV/RISCVAsmPrinter.cpp
+#		Target/RISCV/RISCVExpandPseudoInsts.cpp
+#		Target/RISCV/RISCVFrameLowering.cpp
+#		Target/RISCV/RISCVInstrInfo.cpp
+#		Target/RISCV/RISCVISelDAGToDAG.cpp
+#		Target/RISCV/RISCVISelLowering.cpp
+#		Target/RISCV/RISCVMCInstLower.cpp
+#		Target/RISCV/RISCVMergeBaseOffset.cpp
+#		Target/RISCV/RISCVRegisterInfo.cpp
+#		Target/RISCV/RISCVSubtarget.cpp
+#		Target/RISCV/RISCVTargetMachine.cpp
+#		Target/RISCV/RISCVTargetObjectFile.cpp
+#		Target/RISCV/TargetInfo/RISCVTargetInfo.cpp
+#		Target/RISCV/Utils/RISCVBaseInfo.cpp
+#		Target/RISCV/Utils/RISCVMatInt.cpp
+#.endif # MK_LLVM_TARGET_RISCV
+#.if ${MK_LLVM_TARGET_SPARC} != "no"
+#		Target/Sparc/AsmParser/SparcAsmParser.cpp
+#		Target/Sparc/DelaySlotFiller.cpp
+#SRCS_XDW+=	Target/Sparc/Disassembler/SparcDisassembler.cpp
+#		Target/Sparc/InstPrinter/SparcInstPrinter.cpp
+#		Target/Sparc/LeonPasses.cpp
+#		Target/Sparc/MCTargetDesc/SparcAsmBackend.cpp
+#		Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCAsmInfo.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCCodeEmitter.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCExpr.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCTargetDesc.cpp
+#		Target/Sparc/MCTargetDesc/SparcTargetStreamer.cpp
+#		Target/Sparc/SparcAsmPrinter.cpp
+#		Target/Sparc/SparcFrameLowering.cpp
+#		Target/Sparc/SparcISelDAGToDAG.cpp
+#		Target/Sparc/SparcISelLowering.cpp
+#		Target/Sparc/SparcInstrInfo.cpp
+#		Target/Sparc/SparcMCInstLower.cpp
+#		Target/Sparc/SparcMachineFunctionInfo.cpp
+#		Target/Sparc/SparcRegisterInfo.cpp
+#		Target/Sparc/SparcSubtarget.cpp
+#		Target/Sparc/SparcTargetMachine.cpp
+#		Target/Sparc/SparcTargetObjectFile.cpp
+#		Target/Sparc/TargetInfo/SparcTargetInfo.cpp
+#.endif # MK_LLVM_TARGET_SPARC
+#		Target/Target.cpp
+#		Target/TargetIntrinsicInfo.cpp
+#		Target/TargetLoweringObjectFile.cpp
+#		Target/TargetMachine.cpp
+#		Target/TargetMachineC.cpp
+#.if ${MK_LLVM_TARGET_X86} != "no"
+#		Target/X86/AsmParser/X86AsmInstrumentation.cpp
+#		Target/X86/AsmParser/X86AsmParser.cpp
+#SRCS_XDW+=	Target/X86/Disassembler/X86Disassembler.cpp
+#SRCS_XDW+=	Target/X86/Disassembler/X86DisassemblerDecoder.cpp
+#		Target/X86/InstPrinter/X86ATTInstPrinter.cpp
+#		Target/X86/InstPrinter/X86InstComments.cpp
+#		Target/X86/InstPrinter/X86InstPrinterCommon.cpp
+#		Target/X86/InstPrinter/X86IntelInstPrinter.cpp
+#		Target/X86/MCTargetDesc/X86AsmBackend.cpp
+#		Target/X86/MCTargetDesc/X86ELFObjectWriter.cpp
+#		Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
+#		Target/X86/MCTargetDesc/X86MCCodeEmitter.cpp
+#		Target/X86/MCTargetDesc/X86MCTargetDesc.cpp
+#		Target/X86/MCTargetDesc/X86MachObjectWriter.cpp
+#		Target/X86/MCTargetDesc/X86WinCOFFObjectWriter.cpp
+#		Target/X86/MCTargetDesc/X86WinCOFFStreamer.cpp
+#		Target/X86/MCTargetDesc/X86WinCOFFTargetStreamer.cpp
+#		Target/X86/TargetInfo/X86TargetInfo.cpp
+#		Target/X86/Utils/X86ShuffleDecode.cpp
+#		Target/X86/ShadowCallStack.cpp
+#		Target/X86/X86AsmPrinter.cpp
+#		Target/X86/X86AvoidStoreForwardingBlocks.cpp
+#		Target/X86/X86CallFrameOptimization.cpp
+#		Target/X86/X86CallLowering.cpp
+#		Target/X86/X86CallingConv.cpp
+#		Target/X86/X86CmovConversion.cpp
+#		Target/X86/X86CondBrFolding.cpp
+#		Target/X86/X86DiscriminateMemOps.cpp
+#		Target/X86/X86DomainReassignment.cpp
+#		Target/X86/X86EvexToVex.cpp
+#		Target/X86/X86ExpandPseudo.cpp
+#		Target/X86/X86FastISel.cpp
+#		Target/X86/X86FixupBWInsts.cpp
+#		Target/X86/X86FixupLEAs.cpp
+#		Target/X86/X86FixupSetCC.cpp
+#		Target/X86/X86FlagsCopyLowering.cpp
+#		Target/X86/X86FloatingPoint.cpp
+#		Target/X86/X86FrameLowering.cpp
+#		Target/X86/X86ISelDAGToDAG.cpp
+#		Target/X86/X86ISelLowering.cpp
+#		Target/X86/X86IndirectBranchTracking.cpp
+#		Target/X86/X86InsertPrefetch.cpp
+#		Target/X86/X86InstrFMA3Info.cpp
+#		Target/X86/X86InstrFoldTables.cpp
+#		Target/X86/X86InstrInfo.cpp
+#		Target/X86/X86InstructionSelector.cpp
+#		Target/X86/X86InterleavedAccess.cpp
+#		Target/X86/X86LegalizerInfo.cpp
+#		Target/X86/X86MCInstLower.cpp
+#		Target/X86/X86MachineFunctionInfo.cpp
+#		Target/X86/X86MacroFusion.cpp
+#		Target/X86/X86OptimizeLEAs.cpp
+#		Target/X86/X86PadShortFunction.cpp
+#		Target/X86/X86RegisterBankInfo.cpp
+#		Target/X86/X86RegisterInfo.cpp
+#		Target/X86/X86RetpolineThunks.cpp
+#		Target/X86/X86SelectionDAGInfo.cpp
+#		Target/X86/X86ShuffleDecodeConstantPool.cpp
+#		Target/X86/X86SpeculativeLoadHardening.cpp
+#		Target/X86/X86Subtarget.cpp
+#		Target/X86/X86TargetMachine.cpp
+#		Target/X86/X86TargetObjectFile.cpp
+#		Target/X86/X86TargetTransformInfo.cpp
+#		Target/X86/X86VZeroUpper.cpp
+#		Target/X86/X86WinAllocaExpander.cpp
+#		Target/X86/X86WinEHState.cpp
+#.endif # MK_LLVM_TARGET_X86
+#		ToolDrivers/llvm-dlltool/DlltoolDriver.cpp
+#SRCS_EXL+=	ToolDrivers/llvm-lib/LibDriver.cpp
+#		Transforms/AggressiveInstCombine/AggressiveInstCombine.cpp
+#		Transforms/AggressiveInstCombine/TruncInstCombine.cpp
+#		Transforms/Coroutines/CoroCleanup.cpp
+#		Transforms/Coroutines/CoroEarly.cpp
+#		Transforms/Coroutines/CoroElide.cpp
+#		Transforms/Coroutines/CoroFrame.cpp
+#		Transforms/Coroutines/CoroSplit.cpp
+#		Transforms/Coroutines/Coroutines.cpp
+#		Transforms/IPO/AlwaysInliner.cpp
+#		Transforms/IPO/ArgumentPromotion.cpp
+#		Transforms/IPO/BarrierNoopPass.cpp
+#SRCS_EXT+=	Transforms/IPO/BlockExtractor.cpp
+#		Transforms/IPO/CalledValuePropagation.cpp
+#		Transforms/IPO/ConstantMerge.cpp
+#		Transforms/IPO/CrossDSOCFI.cpp
+#		Transforms/IPO/DeadArgumentElimination.cpp
+#		Transforms/IPO/ElimAvailExtern.cpp
+#		Transforms/IPO/ExtractGV.cpp
+#		Transforms/IPO/ForceFunctionAttrs.cpp
+#		Transforms/IPO/FunctionAttrs.cpp
+#		Transforms/IPO/FunctionImport.cpp
+#		Transforms/IPO/GlobalDCE.cpp
+#		Transforms/IPO/GlobalOpt.cpp
+#		Transforms/IPO/GlobalSplit.cpp
+#		Transforms/IPO/HotColdSplitting.cpp
+#		Transforms/IPO/IPConstantPropagation.cpp
+#SRCS_EXT+=	Transforms/IPO/IPO.cpp
+#		Transforms/IPO/InferFunctionAttrs.cpp
+#		Transforms/IPO/InlineSimple.cpp
+#		Transforms/IPO/Inliner.cpp
+#		Transforms/IPO/Internalize.cpp
+#		Transforms/IPO/LoopExtractor.cpp
+#		Transforms/IPO/LowerTypeTests.cpp
+#		Transforms/IPO/MergeFunctions.cpp
+#		Transforms/IPO/PartialInlining.cpp
+#		Transforms/IPO/PassManagerBuilder.cpp
+#		Transforms/IPO/PruneEH.cpp
+#		Transforms/IPO/SCCP.cpp
+#		Transforms/IPO/SampleProfile.cpp
+#		Transforms/IPO/StripDeadPrototypes.cpp
+#		Transforms/IPO/StripSymbols.cpp
+#		Transforms/IPO/SyntheticCountsPropagation.cpp
+#		Transforms/IPO/ThinLTOBitcodeWriter.cpp
+#		Transforms/IPO/WholeProgramDevirt.cpp
+#		Transforms/InstCombine/InstCombineAddSub.cpp
+#		Transforms/InstCombine/InstCombineAndOrXor.cpp
+#		Transforms/InstCombine/InstCombineCalls.cpp
+#		Transforms/InstCombine/InstCombineCasts.cpp
+#		Transforms/InstCombine/InstCombineCompares.cpp
+#		Transforms/InstCombine/InstCombineLoadStoreAlloca.cpp
+#		Transforms/InstCombine/InstCombineMulDivRem.cpp
+#		Transforms/InstCombine/InstCombinePHI.cpp
+#		Transforms/InstCombine/InstCombineSelect.cpp
+#		Transforms/InstCombine/InstCombineShifts.cpp
+#		Transforms/InstCombine/InstCombineSimplifyDemanded.cpp
+#		Transforms/InstCombine/InstCombineVectorOps.cpp
+#		Transforms/InstCombine/InstructionCombining.cpp
+#		Transforms/Instrumentation/AddressSanitizer.cpp
+#		Transforms/Instrumentation/BoundsChecking.cpp
+#		Transforms/Instrumentation/CGProfile.cpp
+#		Transforms/Instrumentation/ControlHeightReduction.cpp
+#		Transforms/Instrumentation/DataFlowSanitizer.cpp
+#		Transforms/Instrumentation/EfficiencySanitizer.cpp
+#		Transforms/Instrumentation/GCOVProfiling.cpp
+#		Transforms/Instrumentation/HWAddressSanitizer.cpp
+#		Transforms/Instrumentation/IndirectCallPromotion.cpp
+#		Transforms/Instrumentation/InstrProfiling.cpp
+#		Transforms/Instrumentation/Instrumentation.cpp
+#		Transforms/Instrumentation/MemorySanitizer.cpp
+#		Transforms/Instrumentation/PGOInstrumentation.cpp
+#		Transforms/Instrumentation/PGOMemOPSizeOpt.cpp
+#		Transforms/Instrumentation/SanitizerCoverage.cpp
+#		Transforms/Instrumentation/ThreadSanitizer.cpp
+#		Transforms/ObjCARC/DependencyAnalysis.cpp
+#SRCS_EXT+=	Transforms/ObjCARC/ObjCARC.cpp
+#		Transforms/ObjCARC/ObjCARCAPElim.cpp
+#		Transforms/ObjCARC/ObjCARCContract.cpp
+#		Transforms/ObjCARC/ObjCARCExpand.cpp
+#		Transforms/ObjCARC/ObjCARCOpts.cpp
+#		Transforms/ObjCARC/ProvenanceAnalysis.cpp
+#		Transforms/ObjCARC/ProvenanceAnalysisEvaluator.cpp
+#		Transforms/ObjCARC/PtrState.cpp
+#		Transforms/Scalar/ADCE.cpp
+#		Transforms/Scalar/AlignmentFromAssumptions.cpp
+#		Transforms/Scalar/BDCE.cpp
+#		Transforms/Scalar/CallSiteSplitting.cpp
+#		Transforms/Scalar/ConstantHoisting.cpp
+#		Transforms/Scalar/ConstantProp.cpp
+#		Transforms/Scalar/CorrelatedValuePropagation.cpp
+#		Transforms/Scalar/DCE.cpp
+#		Transforms/Scalar/DeadStoreElimination.cpp
+#		Transforms/Scalar/DivRemPairs.cpp
+#		Transforms/Scalar/EarlyCSE.cpp
+#		Transforms/Scalar/FlattenCFGPass.cpp
+#		Transforms/Scalar/Float2Int.cpp
+#		Transforms/Scalar/GVN.cpp
+#		Transforms/Scalar/GVNHoist.cpp
+#		Transforms/Scalar/GVNSink.cpp
+#		Transforms/Scalar/GuardWidening.cpp
+#		Transforms/Scalar/IVUsersPrinter.cpp
+#		Transforms/Scalar/IndVarSimplify.cpp
+#		Transforms/Scalar/InductiveRangeCheckElimination.cpp
+#SRCS_EXT+=	Transforms/Scalar/InferAddressSpaces.cpp
+#		Transforms/Scalar/InstSimplifyPass.cpp
+#		Transforms/Scalar/JumpThreading.cpp
+#		Transforms/Scalar/LICM.cpp
+#		Transforms/Scalar/LoopAccessAnalysisPrinter.cpp
+#		Transforms/Scalar/LoopDataPrefetch.cpp
+#		Transforms/Scalar/LoopDeletion.cpp
+#		Transforms/Scalar/LoopDistribute.cpp
+#		Transforms/Scalar/LoopIdiomRecognize.cpp
+#		Transforms/Scalar/LoopInstSimplify.cpp
+#		Transforms/Scalar/LoopInterchange.cpp
+#		Transforms/Scalar/LoopLoadElimination.cpp
+#		Transforms/Scalar/LoopPassManager.cpp
+#		Transforms/Scalar/LoopPredication.cpp
+#		Transforms/Scalar/LoopRerollPass.cpp
+#		Transforms/Scalar/LoopRotation.cpp
+#		Transforms/Scalar/LoopSimplifyCFG.cpp
+#		Transforms/Scalar/LoopSink.cpp
+#		Transforms/Scalar/LoopStrengthReduce.cpp
+#		Transforms/Scalar/LoopUnrollPass.cpp
+#		Transforms/Scalar/LoopUnrollAndJamPass.cpp
+#		Transforms/Scalar/LoopUnswitch.cpp
+#		Transforms/Scalar/LoopVersioningLICM.cpp
+#		Transforms/Scalar/LowerAtomic.cpp
+#		Transforms/Scalar/LowerExpectIntrinsic.cpp
+#		Transforms/Scalar/LowerGuardIntrinsic.cpp
+#		Transforms/Scalar/MakeGuardsExplicit.cpp
+#		Transforms/Scalar/MemCpyOptimizer.cpp
+#		Transforms/Scalar/MergeICmps.cpp
+#		Transforms/Scalar/MergedLoadStoreMotion.cpp
+#		Transforms/Scalar/NaryReassociate.cpp
+#		Transforms/Scalar/NewGVN.cpp
+#		Transforms/Scalar/PartiallyInlineLibCalls.cpp
+#		Transforms/Scalar/PlaceSafepoints.cpp
+#		Transforms/Scalar/Reassociate.cpp
+#		Transforms/Scalar/Reg2Mem.cpp
+#		Transforms/Scalar/RewriteStatepointsForGC.cpp
+#		Transforms/Scalar/SCCP.cpp
+#		Transforms/Scalar/SROA.cpp
+#SRCS_EXT+=	Transforms/Scalar/Scalar.cpp
+#		Transforms/Scalar/Scalarizer.cpp
+#		Transforms/Scalar/SeparateConstOffsetFromGEP.cpp
+#		Transforms/Scalar/SimpleLoopUnswitch.cpp
+#		Transforms/Scalar/SimplifyCFGPass.cpp
+#		Transforms/Scalar/Sink.cpp
+#		Transforms/Scalar/SpeculateAroundPHIs.cpp
+#		Transforms/Scalar/SpeculativeExecution.cpp
+#		Transforms/Scalar/StraightLineStrengthReduce.cpp
+#		Transforms/Scalar/StructurizeCFG.cpp
+#		Transforms/Scalar/TailRecursionElimination.cpp
+#		Transforms/Scalar/WarnMissedTransforms.cpp
+#		Transforms/Utils/ASanStackFrameLayout.cpp
+#		Transforms/Utils/AddDiscriminators.cpp
+#		Transforms/Utils/BasicBlockUtils.cpp
+#		Transforms/Utils/BreakCriticalEdges.cpp
+#		Transforms/Utils/BuildLibCalls.cpp
+#		Transforms/Utils/BypassSlowDivision.cpp
+#		Transforms/Utils/CallPromotionUtils.cpp
+#		Transforms/Utils/CanonicalizeAliases.cpp
+#		Transforms/Utils/CloneFunction.cpp
+#		Transforms/Utils/CloneModule.cpp
+#		Transforms/Utils/CodeExtractor.cpp
+#		Transforms/Utils/CtorUtils.cpp
+#		Transforms/Utils/DemoteRegToStack.cpp
+#		Transforms/Utils/EntryExitInstrumenter.cpp
+#		Transforms/Utils/EscapeEnumerator.cpp
+#		Transforms/Utils/Evaluator.cpp
+#		Transforms/Utils/FlattenCFG.cpp
+#		Transforms/Utils/FunctionComparator.cpp
+#		Transforms/Utils/FunctionImportUtils.cpp
+#		Transforms/Utils/GlobalStatus.cpp
+#		Transforms/Utils/GuardUtils.cpp
+#		Transforms/Utils/ImportedFunctionsInliningStatistics.cpp
+#		Transforms/Utils/InlineFunction.cpp
+#		Transforms/Utils/InstructionNamer.cpp
+#		Transforms/Utils/IntegerDivision.cpp
+#		Transforms/Utils/LCSSA.cpp
+#		Transforms/Utils/LibCallsShrinkWrap.cpp
+#		Transforms/Utils/Local.cpp
+#		Transforms/Utils/LoopSimplify.cpp
+#		Transforms/Utils/LoopRotationUtils.cpp
+#		Transforms/Utils/LoopUnroll.cpp
+#		Transforms/Utils/LoopUnrollAndJam.cpp
+#		Transforms/Utils/LoopUnrollPeel.cpp
+#		Transforms/Utils/LoopUnrollRuntime.cpp
+#		Transforms/Utils/LoopUtils.cpp
+#		Transforms/Utils/LoopVersioning.cpp
+#		Transforms/Utils/LowerInvoke.cpp
+#		Transforms/Utils/LowerSwitch.cpp
+#		Transforms/Utils/Mem2Reg.cpp
+#		Transforms/Utils/MetaRenamer.cpp
+#		Transforms/Utils/ModuleUtils.cpp
+#		Transforms/Utils/NameAnonGlobals.cpp
+#		Transforms/Utils/PredicateInfo.cpp
+#		Transforms/Utils/PromoteMemoryToRegister.cpp
+#		Transforms/Utils/SSAUpdater.cpp
+#		Transforms/Utils/SanitizerStats.cpp
+#		Transforms/Utils/SimplifyCFG.cpp
+#		Transforms/Utils/SimplifyIndVar.cpp
+#		Transforms/Utils/SimplifyLibCalls.cpp
+#		Transforms/Utils/SplitModule.cpp
+#		Transforms/Utils/StripGCRelocates.cpp
+#		Transforms/Utils/StripNonLineTableDebugInfo.cpp
+#		Transforms/Utils/SymbolRewriter.cpp
+#		Transforms/Utils/UnifyFunctionExitNodes.cpp
+#SRCS_EXT+=	Transforms/Utils/Utils.cpp
+#		Transforms/Utils/VNCoercion.cpp
+#		Transforms/Utils/ValueMapper.cpp
+#		Transforms/Vectorize/LoadStoreVectorizer.cpp
+#		Transforms/Vectorize/LoopVectorizationLegality.cpp
+#		Transforms/Vectorize/LoopVectorize.cpp
+#		Transforms/Vectorize/SLPVectorizer.cpp
+#		Transforms/Vectorize/VPlan.cpp
+#		Transforms/Vectorize/VPlanHCFGBuilder.cpp
+#		Transforms/Vectorize/VPlanHCFGTransforms.cpp
+#		Transforms/Vectorize/VPlanVerifier.cpp
+#SRCS_EXT+=	Transforms/Vectorize/Vectorize.cpp
+
++
+{
+	subdir = llvmlibdir :: 'XRay';
+
+	if opts.clang_extras
+	{
+		files(
+			BlockIndexer.cpp BlockVerifier.cpp FDRRecordProducer.cpp
+			FDRRecords.cpp FDRTraceExpander.cpp FileHeaderReader.cpp
+			InstrumentationMap.cpp LogBuilderConsumer.cpp RecordInitializer.cpp
+			Trace.cpp
+		)
+	}
+	else
+	{
+		[]
+	}
+}
+	;
+
+
+
+
+
+#.include <src.opts.mk>
+#.include "../llvm.pre.mk"
+#
+#LIB=		llvm
+#INTERNALLIB=
+#
+#CFLAGS+=	-I${.OBJDIR}
+#
+#.if ${MK_LLVM_TARGET_AARCH64} == "no" && ${MK_LLVM_TARGET_ARM} == "no" && \
+#    ${MK_LLVM_TARGET_BPF} == "no" && ${MK_LLVM_TARGET_MIPS} == "no" && \
+#    ${MK_LLVM_TARGET_POWERPC} == "no" && ${MK_LLVM_TARGET_RISCV} == "no" && \
+#    ${MK_LLVM_TARGET_SPARC} == "no" && ${MK_LLVM_TARGET_X86} == "no"
+#.error Please enable at least one of: MK_LLVM_TARGET_AARCH64,\
+# MK_LLVM_TARGET_ARM, MK_LLVM_TARGET_BPF, MK_LLVM_TARGET_MIPS, \
+# MK_LLVM_TARGET_POWERPC, MK_LLVM_TARGET_RISCV, MK_LLVM_TARGET_SPARC, \
+# or MK_LLVM_TARGET_X86
+#.endif
+#
+#.for arch in AArch64 ARM BPF Mips PowerPC RISCV Sparc X86
+#. if ${MK_LLVM_TARGET_${arch:tu}} != "no"
+#CFLAGS+=	-I${LLVM_SRCS}/lib/Target/${arch}
+#. endif
+#.endfor
+

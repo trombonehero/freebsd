@@ -1,0 +1,110 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'CodeGen';
+
+	files(
+		AggressiveAntiDepBreaker.cpp AllocationOrder.cpp Analysis.cpp
+		AtomicExpandPass.cpp BasicTargetTransformInfo.cpp BranchFolding.cpp
+		BranchRelaxation.cpp BreakFalseDeps.cpp BuiltinGCs.cpp
+		CFIInstrInserter.cpp CalcSpillWeights.cpp CallingConvLower.cpp
+		CodeGen.cpp CodeGenPrepare.cpp CriticalAntiDepBreaker.cpp
+		DFAPacketizer.cpp DeadMachineInstructionElim.cpp DetectDeadLanes.cpp
+		DwarfEHPrepare.cpp EarlyIfConversion.cpp EdgeBundles.cpp
+		ExecutionDomainFix.cpp ExpandISelPseudos.cpp ExpandMemCmp.cpp
+		ExpandPostRAPseudos.cpp ExpandReductions.cpp FEntryInserter.cpp
+		FaultMaps.cpp FuncletLayout.cpp GCMetadata.cpp GCMetadataPrinter.cpp
+		GCRootLowering.cpp GCStrategy.cpp GlobalMerge.cpp IfConversion.cpp
+		ImplicitNullChecks.cpp IndirectBrExpandPass.cpp InlineSpiller.cpp
+		InterferenceCache.cpp InterleavedAccessPass.cpp
+		InterleavedLoadCombinePass.cpp IntrinsicLowering.cpp
+		LLVMTargetMachine.cpp LatencyPriorityQueue.cpp
+		LazyMachineBlockFrequencyInfo.cpp LexicalScopes.cpp LiveDebugValues.cpp
+		LiveDebugVariables.cpp LiveInterval.cpp LiveIntervalUnion.cpp
+		LiveIntervals.cpp LivePhysRegs.cpp LiveRangeCalc.cpp LiveRangeEdit.cpp
+		LiveRangeShrink.cpp LiveRegMatrix.cpp LiveRegUnits.cpp LiveStacks.cpp
+		LiveVariables.cpp LocalStackSlotAllocation.cpp LoopTraversal.cpp
+		LowLevelType.cpp LowerEmuTLS.cpp MIRCanonicalizerPass.cpp MIRPrinter.cpp
+		MIRPrintingPass.cpp MachineBasicBlock.cpp MachineBlockFrequencyInfo.cpp
+		MachineBlockPlacement.cpp MachineBranchProbabilityInfo.cpp
+		MachineCSE.cpp MachineCombiner.cpp MachineCopyPropagation.cpp
+		MachineDominanceFrontier.cpp MachineDominators.cpp MachineFrameInfo.cpp
+		MachineFunction.cpp MachineFunctionPass.cpp
+		MachineFunctionPrinterPass.cpp MachineInstr.cpp MachineInstrBundle.cpp
+		MachineLICM.cpp MachineLoopInfo.cpp MachineModuleInfo.cpp
+		MachineModuleInfoImpls.cpp MachineOperand.cpp
+		MachineOptimizationRemarkEmitter.cpp MachineOutliner.cpp
+		MachinePipeliner.cpp MachinePostDominators.cpp MachineRegionInfo.cpp
+		MachineRegisterInfo.cpp MachineSSAUpdater.cpp MachineScheduler.cpp
+		MachineSink.cpp MachineTraceMetrics.cpp MachineVerifier.cpp
+		MacroFusion.cpp OptimizePHIs.cpp PHIElimination.cpp
+		PHIEliminationUtils.cpp ParallelCG.cpp PatchableFunction.cpp
+		PeepholeOptimizer.cpp PostRAHazardRecognizer.cpp PostRASchedulerList.cpp
+		PreISelIntrinsicLowering.cpp ProcessImplicitDefs.cpp
+		PrologEpilogInserter.cpp PseudoSourceValue.cpp ReachingDefAnalysis.cpp
+		RegAllocBase.cpp RegAllocBasic.cpp RegAllocFast.cpp RegAllocGreedy.cpp
+		RegAllocPBQP.cpp RegUsageInfoCollector.cpp RegUsageInfoPropagate.cpp
+		RegisterClassInfo.cpp RegisterCoalescer.cpp RegisterPressure.cpp
+		RegisterScavenging.cpp RegisterUsageInfo.cpp
+		RenameIndependentSubregs.cpp ResetMachineFunctionPass.cpp SafeStack.cpp
+		SafeStackColoring.cpp SafeStackLayout.cpp ScalarizeMaskedMemIntrin.cpp
+		ScheduleDAG.cpp ScheduleDAGInstrs.cpp ScheduleDAGPrinter.cpp
+		ScoreboardHazardRecognizer.cpp ShadowStackGCLowering.cpp ShrinkWrap.cpp
+		SjLjEHPrepare.cpp SlotIndexes.cpp SpillPlacement.cpp SplitKit.cpp
+		StackColoring.cpp StackMapLivenessAnalysis.cpp StackMaps.cpp
+		StackProtector.cpp StackSlotColoring.cpp TailDuplication.cpp
+		TailDuplicator.cpp TargetFrameLoweringImpl.cpp TargetInstrInfo.cpp
+		TargetLoweringBase.cpp TargetLoweringObjectFileImpl.cpp
+		TargetOptionsImpl.cpp TargetPassConfig.cpp TargetRegisterInfo.cpp
+		TargetSchedule.cpp TargetSubtargetInfo.cpp TwoAddressInstructionPass.cpp
+		UnreachableBlockElim.cpp ValueTypes.cpp VirtRegMap.cpp WasmEHPrepare.cpp
+		WinEHPrepare.cpp XRayInstrumentation.cpp
+	)
+	+
+	files(
+		ARMException.cpp AccelTable.cpp AddressPool.cpp AsmPrinter.cpp
+		AsmPrinterDwarf.cpp AsmPrinterInlineAsm.cpp CodeViewDebug.cpp DIE.cpp
+		DIEHash.cpp DbgEntityHistoryCalculator.cpp DebugHandlerBase.cpp
+		DebugLocStream.cpp DwarfCFIException.cpp DwarfCompileUnit.cpp
+		DwarfDebug.cpp DwarfExpression.cpp DwarfFile.cpp DwarfStringPool.cpp
+		DwarfUnit.cpp EHStreamer.cpp ErlangGCPrinter.cpp OcamlGCPrinter.cpp
+		WasmException.cpp WinCFGuard.cpp WinException.cpp
+		,
+		subdir = 'AsmPrinter'
+	)
+	+
+	files(
+		CSEInfo.cpp CSEMIRBuilder.cpp Combiner.cpp CombinerHelper.cpp
+		CallLowering.cpp GISelChangeObserver.cpp GlobalISel.cpp IRTranslator.cpp
+		InstructionSelect.cpp InstructionSelector.cpp LegalityPredicates.cpp
+		LegalizeMutations.cpp Legalizer.cpp LegalizerHelper.cpp
+		LegalizerInfo.cpp Localizer.cpp MachineIRBuilder.cpp RegBankSelect.cpp
+		RegisterBank.cpp RegisterBankInfo.cpp Utils.cpp
+		,
+		subdir = 'GlobalISel'
+	)
+	+
+	files(
+		DAGCombiner.cpp FastISel.cpp FunctionLoweringInfo.cpp InstrEmitter.cpp
+		LegalizeDAG.cpp LegalizeFloatTypes.cpp LegalizeIntegerTypes.cpp
+		LegalizeTypes.cpp LegalizeTypesGeneric.cpp LegalizeVectorOps.cpp
+		LegalizeVectorTypes.cpp ResourcePriorityQueue.cpp ScheduleDAGFast.cpp
+		ScheduleDAGRRList.cpp ScheduleDAGSDNodes.cpp ScheduleDAGVLIW.cpp
+		SelectionDAG.cpp SelectionDAGAddressAnalysis.cpp SelectionDAGBuilder.cpp
+		SelectionDAGDumper.cpp SelectionDAGISel.cpp SelectionDAGPrinter.cpp
+		SelectionDAGTargetInfo.cpp StatepointLowering.cpp TargetLowering.cpp
+		,
+		subdir = 'SelectionDAG'
+	)
+	+
+	if opts.clang_extras
+	{
+		files(
+			MILexer.cpp MIParser.cpp MIRParser.cpp
+			,
+			subdir = 'MIRParser'
+		)
+	}
+	else []
+};

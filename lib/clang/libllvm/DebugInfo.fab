@@ -1,0 +1,126 @@
+# $FreeBSD$
+
+sources = {
+	subdir = llvmlibdir :: 'DebugInfo';
+
+	files(
+		CVSymbolVisitor.cpp CVTypeVisitor.cpp CodeViewError.cpp
+		CodeViewRecordIO.cpp ContinuationRecordBuilder.cpp EnumTables.cpp
+		Formatters.cpp GlobalTypeTableBuilder.cpp Line.cpp RecordName.cpp
+		RecordSerialization.cpp SimpleTypeSerializer.cpp SymbolDumper.cpp
+		SymbolRecordMapping.cpp TypeDumpVisitor.cpp TypeHashing.cpp
+		TypeIndex.cpp TypeIndexDiscovery.cpp TypeRecordMapping.cpp
+		TypeStreamMerger.cpp TypeTableCollection.cpp
+		,
+		subdir = 'CodeView'
+	)
+	+
+	files(
+		MSFBuilder.cpp MSFCommon.cpp MSFError.cpp MappedBlockStream.cpp
+		,
+		subdir = 'MSF'
+	)
+	+
+	if opts.clang_extras
+	{
+		files(
+			AppendingTypeTableBuilder.cpp DebugChecksumsSubsection.cpp
+			DebugCrossExSubsection.cpp DebugCrossImpSubsection.cpp
+			DebugFrameDataSubsection.cpp DebugInlineeLinesSubsection.cpp
+			DebugLinesSubsection.cpp DebugStringTableSubsection.cpp
+			DebugSubsection.cpp DebugSubsectionRecord.cpp
+			DebugSubsectionVisitor.cpp DebugSymbolRVASubsection.cpp
+			DebugSymbolsSubsection.cpp LazyRandomTypeCollection.cpp
+			MergingTypeTableBuilder.cpp StringsAndChecksums.cpp
+			SymbolSerializer.cpp TypeRecordHelpers.cpp
+			,
+			subdir = 'CodeView'
+		)
+		+
+		files(
+			GenericError.cpp IPDBSourceFile.cpp PDB.cpp PDBContext.cpp
+			PDBExtras.cpp PDBInterfaceAnchors.cpp PDBSymDumper.cpp PDBSymbol.cpp
+			PDBSymbolAnnotation.cpp PDBSymbolBlock.cpp PDBSymbolCompiland.cpp
+			PDBSymbolCompilandDetails.cpp PDBSymbolCompilandEnv.cpp
+			PDBSymbolCustom.cpp PDBSymbolData.cpp PDBSymbolExe.cpp
+			PDBSymbolFunc.cpp PDBSymbolFuncDebugEnd.cpp
+			PDBSymbolFuncDebugStart.cpp PDBSymbolLabel.cpp
+			PDBSymbolPublicSymbol.cpp PDBSymbolThunk.cpp PDBSymbolTypeArray.cpp
+			PDBSymbolTypeBaseClass.cpp PDBSymbolTypeBuiltin.cpp
+			PDBSymbolTypeCustom.cpp PDBSymbolTypeDimension.cpp
+			PDBSymbolTypeEnum.cpp PDBSymbolTypeFriend.cpp
+			PDBSymbolTypeFunctionArg.cpp PDBSymbolTypeFunctionSig.cpp
+			PDBSymbolTypeManaged.cpp PDBSymbolTypePointer.cpp
+			PDBSymbolTypeTypedef.cpp PDBSymbolTypeUDT.cpp
+			PDBSymbolTypeVTable.cpp PDBSymbolTypeVTableShape.cpp
+			PDBSymbolUnknown.cpp PDBSymbolUsingNamespace.cpp UDTLayout.cpp
+			,
+			subdir = 'PDB'
+		)
+		+
+		files(
+			DbiModuleDescriptor.cpp DbiModuleDescriptorBuilder.cpp
+			DbiModuleList.cpp DbiStream.cpp DbiStreamBuilder.cpp EnumTables.cpp
+			GSIStreamBuilder.cpp GlobalsStream.cpp Hash.cpp HashTable.cpp
+			InfoStream.cpp InfoStreamBuilder.cpp ModuleDebugStream.cpp
+			NamedStreamMap.cpp NativeCompilandSymbol.cpp NativeEnumGlobals.cpp
+			NativeEnumModules.cpp NativeEnumTypes.cpp NativeExeSymbol.cpp
+			NativeRawSymbol.cpp NativeSession.cpp NativeSymbolEnumerator.cpp
+			NativeTypeArray.cpp NativeTypeBuiltin.cpp NativeTypeEnum.cpp
+			NativeTypeFunctionSig.cpp NativeTypePointer.cpp
+			NativeTypeTypedef.cpp NativeTypeUDT.cpp NativeTypeVTShape.cpp
+			PDBFile.cpp PDBFileBuilder.cpp PDBStringTable.cpp
+			PDBStringTableBuilder.cpp PublicsStream.cpp RawError.cpp
+			SymbolCache.cpp SymbolStream.cpp TpiHashing.cpp TpiStream.cpp
+			TpiStreamBuilder.cpp
+			,
+			subdir = 'PDB/Native'
+		)
+	}
+	else
+	{
+		[]
+	}
+	+
+	if opts.miw
+	{
+		files(
+			DWARFAbbreviationDeclaration.cpp
+			DWARFAcceleratorTable.cpp
+			DWARFAddressRange.cpp
+			DWARFCompileUnit.cpp
+			DWARFContext.cpp
+			DWARFDataExtractor.cpp
+			DWARFDebugAbbrev.cpp
+			DWARFDebugAddr.cpp
+			DWARFDebugArangeSet.cpp
+			DWARFDebugAranges.cpp
+			DWARFDebugFrame.cpp
+			DWARFDebugInfoEntry.cpp
+			DWARFDebugLine.cpp
+			DWARFDebugLoc.cpp
+			DWARFDebugMacro.cpp
+			DWARFDebugPubTable.cpp
+			DWARFDebugRangeList.cpp
+			DWARFDebugRnglists.cpp
+			DWARFDie.cpp
+			DWARFExpression.cpp
+			DWARFFormValue.cpp
+			DWARFGdbIndex.cpp
+			DWARFListTable.cpp
+			DWARFTypeUnit.cpp
+			DWARFUnit.cpp
+			DWARFUnitIndex.cpp
+			DWARFVerifier.cpp
+			,
+			subdir = 'DWARF'
+		)
+		+
+		files(
+			DIPrinter.cpp SymbolizableObjectFile.cpp Symbolize.cpp
+			,
+			subdir = 'Symbolize'
+		)
+	}
+	else []
+};

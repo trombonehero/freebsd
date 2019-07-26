@@ -30,9 +30,13 @@ sources =
 		subdir = 'MCParser'
 	)
 	+
-	(if opts.xdl files(Disassembler.cpp, subdir = 'MCDisassembler') else [])
+	(if opts.llvm.xdl
+	{
+		files(Disassembler.cpp, subdir = 'MCDisassembler')
+	}
+	else [])
 	+
-	(if opts.xdw
+	(if opts.llvm.xdw
 	{
 		files(
 			MCDisassembler.cpp MCExternalSymbolizer.cpp MCSymbolizer.cpp

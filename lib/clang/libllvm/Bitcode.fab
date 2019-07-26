@@ -98,7 +98,7 @@ sources =
 		subdir = 'SelectionDAG'
 	)
 	+
-	if opts.clang_extras
+	(if opts.llvm.clang.extras
 	{
 		files(
 			MILexer.cpp MIParser.cpp MIRParser.cpp
@@ -106,5 +106,5 @@ sources =
 			subdir = 'MIRParser'
 		)
 	}
-	else []
+	else [])
 };

@@ -6,5 +6,9 @@ sources =
 
 	files(ItaniumDemangle.cpp)
 	+
-	if opts.miw files(MicrosoftDemangle.cpp MicrosoftDemangleNodes.cpp) else []
+	(if opts.llvm.miw
+	{
+		files(MicrosoftDemangle.cpp MicrosoftDemangleNodes.cpp)
+	}
+	else [])
 };

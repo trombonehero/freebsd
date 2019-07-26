@@ -35,13 +35,13 @@ sources =
 	)
 	#regcomp.c regerror.c regexec.c regfree.c regstrlcpy.c xxhash.cpp
 	+
-	if opts.clang_extras files(FileUtilities.cpp SystemUtils.cpp) else []
+	if opts.llvm.clang.extras files(FileUtilities.cpp SystemUtils.cpp) else []
 	+
-	if opts.exl files(FileOutputBuffer.cpp) else []
+	if opts.llvm.exl files(FileOutputBuffer.cpp) else []
 	+
-	if opts.lld files(Parallel.cpp TarWriter.cpp) else []
+	if opts.llvm.lld files(Parallel.cpp TarWriter.cpp) else []
 	+
-	if opts.miw files(COM.cpp) else []
+	if opts.llvm.miw files(COM.cpp) else []
 	+
-	if opts.xdl files(Memory.cpp) else []
+	if opts.llvm.xdl files(Memory.cpp) else []
 };

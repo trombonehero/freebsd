@@ -4,7 +4,7 @@ sources =
 {
 	subdir = llvmlibdir :: 'ExecutionEngine';
 
-	if opts.clang_extras
+	(if opts.llvm.clang.extras
 	{
 		files(
 			CompileOnDemandLayer.cpp Core.cpp ExecutionUtils.cpp
@@ -17,9 +17,9 @@ sources =
 			subdir = 'Orc'
 		)
 	}
-	else []
+	else [])
 	+
-	if xdb
+	(if opts.llvm.xdb
 	{
 		files(
 			ExecutionEngine.cpp ExecutionEngineBindings.cpp
@@ -44,5 +44,5 @@ sources =
 			subdir = 'RuntimeDyld'
 		)
 	}
-	else []
+	else [])
 };

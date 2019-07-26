@@ -74,62 +74,6 @@ tblgen = function(source:file, output:file, gen_action:string): file
 };
 
 
-options = record
-{
-	#
-	# TODO: decipher these
-	#
-	bootstrap = true;   # (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
-	lldb = true;    # MK_LLDB
-
-	#SRCS_ALL+=	${SRCS_MIN}
-	#.if !defined(TOOLS_PREFIX) || ${MK_LLD_BOOTSTRAP} != "no"
-	#SRCS_ALL+=	${SRCS_MIW}
-	#.endif
-	miw = true;   #.if !defined(TOOLS_PREFIX) || ${MK_LLD_BOOTSTRAP} != "no"
-
-	#.if ${MK_CLANG_EXTRAS} != "no"
-	#SRCS_ALL+=	${SRCS_EXT}
-	#.endif
-	clang_extras = true;   # MK_CLANG_EXTRAS
-
-	#.if ${MK_CLANG_FULL} != "no"
-	#SRCS_ALL+=	${SRCS_FUL}
-	#.endif
-	clang_full = true;     # MK_CLANG_FULL
-
-	#.if ${MK_LLD} != "no" || \
-	#    (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
-	#SRCS_ALL+=	${SRCS_LLD}
-	#.endif
-	lld = true;     # ${MK_LLD} != "no" 
-
-	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLD} != "no" || \
-	#    (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
-	#SRCS_ALL+=	${SRCS_EXL}
-	#.endif
-	exl = clang_extras or lld;
-
-	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no"
-	#SRCS_ALL+=	${SRCS_XDB}
-	#.endif
-	xdb = clang_extras or lldb;
-
-	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no" || ${MK_LLD} != "no" || \
-	#    (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
-	#SRCS_ALL+=	${SRCS_XDL}
-	#.endif
-	xdl = clang_extras or lldb or lld or bootstrap;
-
-	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no" || !defined(TOOLS_PREFIX)
-	#SRCS_ALL+=	${SRCS_XDW}
-	#.endif
-	#SRCS+=		${SRCS_ALL:O}
-	xdw = clang_extras or lldb or true;   # || !defined(TOOLS_PREFIX)
-};
-
-
-
 llvm = import('libllvm', options=options);
 
 srcs = llvm.sources;

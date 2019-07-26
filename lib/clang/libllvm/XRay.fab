@@ -4,7 +4,7 @@ sources =
 {
 	subdir = llvmlibdir :: 'XRay';
 
-	if opts.clang_extras
+	if opts.llvm.clang.extras
 	{
 		files(
 			BlockIndexer.cpp BlockVerifier.cpp FDRRecordProducer.cpp

@@ -39,5 +39,5 @@ sources =
 		ValueLattice.cpp ValueLatticeUtils.cpp ValueTracking.cpp VectorUtils.cpp
 	)
 	+
-	if opts.clang_extras files(Analysis.cpp) else []
+	(if opts.llvm.clang.extras files(Analysis.cpp) else [])
 };

@@ -13,7 +13,7 @@ sources =
 		WindowsResource.cpp
 	)
 	+
-	if opts.clang_extras files(Object.cpp) else []
+	(if opts.llvm.clang.extras files(Object.cpp) else [])
 	+
-	if opts.miw files(SymbolSize.cpp) else []
+	(if opts.llvm.miw files(SymbolSize.cpp) else [])
 };

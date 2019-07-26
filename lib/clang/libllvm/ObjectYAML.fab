@@ -6,12 +6,12 @@ sources =
 
 	files(COFFYAML.cpp DWARFYAML.cpp ELFYAML.cpp MachOYAML.cpp)
 	+
-	if opts.clang_extras
+	(if opts.llvm.clang.extras
 	{
 		files(
 			CodeViewYAMLDebugSections.cpp CodeViewYAMLSymbols.cpp
 			CodeViewYAMLTypes.cpp YAML.cpp
 		)
 	}
-	else []
+	else [])
 };

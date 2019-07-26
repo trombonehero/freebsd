@@ -6,7 +6,7 @@ sources =
 
 	files(LTO.cpp LTOBackend.cpp UpdateCompilerUsed.cpp)
 	+
-	if opts.exl
+	(if opts.llvm.exl
 	{
 		files(
 			Caching.cpp
@@ -16,5 +16,5 @@ sources =
 			ThinLTOCodeGenerator.cpp
 		)
 	}
-	else []
+	else [])
 };

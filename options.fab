@@ -1,3 +1,49 @@
-MK_CLANG_EXTRAS = false;
-MK_CLANG_FULL = false;
-MK_LLDB = false;
+bootstrap = record
+{
+	# (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
+	lld = true;
+};
+
+llvm = record
+{
+	lld = true;
+	lldb = true;
+
+	# TODO: decipher this original make(1) fragment
+	#.if !defined(TOOLS_PREFIX) || ${MK_LLD_BOOTSTRAP} != "no"
+	#SRCS_ALL+=	${SRCS_MIW}
+	#.endif
+	miw = true;
+
+	clang = record
+	{
+		extras = true;
+		full = true;
+	};
+
+	#
+	# TODO: decipher the following makefile fragments:
+	#
+
+	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLD} != "no" || \
+	#    (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
+	#SRCS_ALL+=	${SRCS_EXL}
+	#.endif
+	exl = clang.extras or lld;
+
+	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no"
+	#SRCS_ALL+=	${SRCS_XDB}
+	#.endif
+	xdb = clang.extras or lldb;
+
+	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no" || ${MK_LLD} != "no" || \
+	#    (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
+	#SRCS_ALL+=	${SRCS_XDL}
+	#.endif
+	xdl = clang.extras or lldb or lld or bootstrap.lld;
+
+	#.if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no" || !defined(TOOLS_PREFIX)
+	#SRCS_ALL+=	${SRCS_XDW}
+	#.endif
+	xdw = clang.extras or lldb or true;   # || !defined(TOOLS_PREFIX)
+};

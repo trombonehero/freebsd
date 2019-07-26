@@ -1,0 +1,14 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'ProfileData';
+
+	files(
+		Coverage/CoverageMapping.cpp Coverage/CoverageMappingReader.cpp
+		Coverage/CoverageMappingWriter.cpp GCOV.cpp InstrProf.cpp
+		InstrProfReader.cpp InstrProfWriter.cpp
+		ProfileSummaryBuilder.cpp SampleProf.cpp SampleProfReader.cpp
+		SampleProfWriter.cpp
+	)
+};

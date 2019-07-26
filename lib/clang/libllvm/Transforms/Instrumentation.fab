@@ -1,0 +1,25 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Transforms/Instrumentation/AddressSanitizer.cpp
+#		Transforms/Instrumentation/BoundsChecking.cpp
+#		Transforms/Instrumentation/CGProfile.cpp
+#		Transforms/Instrumentation/ControlHeightReduction.cpp
+#		Transforms/Instrumentation/DataFlowSanitizer.cpp
+#		Transforms/Instrumentation/EfficiencySanitizer.cpp
+#		Transforms/Instrumentation/GCOVProfiling.cpp
+#		Transforms/Instrumentation/HWAddressSanitizer.cpp
+#		Transforms/Instrumentation/IndirectCallPromotion.cpp
+#		Transforms/Instrumentation/InstrProfiling.cpp
+#		Transforms/Instrumentation/Instrumentation.cpp
+#		Transforms/Instrumentation/MemorySanitizer.cpp
+#		Transforms/Instrumentation/PGOInstrumentation.cpp
+#		Transforms/Instrumentation/PGOMemOPSizeOpt.cpp
+#		Transforms/Instrumentation/SanitizerCoverage.cpp
+#		Transforms/Instrumentation/ThreadSanitizer.cpp
+	files(
+	)
+};

@@ -1,0 +1,35 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Target/RISCV/AsmParser/RISCVAsmParser.cpp
+#		Target/RISCV/Disassembler/RISCVDisassembler.cpp
+#		Target/RISCV/InstPrinter/RISCVInstPrinter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVAsmBackend.cpp
+#		Target/RISCV/MCTargetDesc/RISCVELFObjectWriter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVELFStreamer.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCAsmInfo.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCCodeEmitter.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCExpr.cpp
+#		Target/RISCV/MCTargetDesc/RISCVMCTargetDesc.cpp
+#		Target/RISCV/MCTargetDesc/RISCVTargetStreamer.cpp
+#		Target/RISCV/RISCVAsmPrinter.cpp
+#		Target/RISCV/RISCVExpandPseudoInsts.cpp
+#		Target/RISCV/RISCVFrameLowering.cpp
+#		Target/RISCV/RISCVInstrInfo.cpp
+#		Target/RISCV/RISCVISelDAGToDAG.cpp
+#		Target/RISCV/RISCVISelLowering.cpp
+#		Target/RISCV/RISCVMCInstLower.cpp
+#		Target/RISCV/RISCVMergeBaseOffset.cpp
+#		Target/RISCV/RISCVRegisterInfo.cpp
+#		Target/RISCV/RISCVSubtarget.cpp
+#		Target/RISCV/RISCVTargetMachine.cpp
+#		Target/RISCV/RISCVTargetObjectFile.cpp
+#		Target/RISCV/TargetInfo/RISCVTargetInfo.cpp
+#		Target/RISCV/Utils/RISCVBaseInfo.cpp
+#		Target/RISCV/Utils/RISCVMatInt.cpp
+	files(
+	)
+};

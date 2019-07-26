@@ -1,0 +1,14 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'Passes';
+
+	files(PassBuilder.cpp)
+	+
+	if opts.clang_extras
+	{
+		files(PassPlugin.cpp StandardInstrumentations.cpp)
+	}
+	else []
+};

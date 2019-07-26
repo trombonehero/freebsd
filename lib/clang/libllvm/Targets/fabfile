@@ -1,0 +1,29 @@
+# $FreeBSD$
+
+sources =
+	{
+		subdir = llvmlibdir :: 'Target';
+
+		files(
+			Target.cpp TargetIntrinsicInfo.cpp TargetLoweringObjectFile.cpp
+			TargetMachine.cpp TargetMachineC.cpp
+		)
+	};
+
+#.if ${MK_LLVM_TARGET_AARCH64} != "no"
+#.endif # MK_LLVM_TARGET_AARCH64
+#.if ${MK_LLVM_TARGET_ARM} != "no"
+#.endif # MK_LLVM_TARGET_ARM
+#.if ${MK_LLVM_TARGET_BPF} != "no"
+#.endif # MK_LLVM_TARGET_BPF
+#.if ${MK_LLVM_TARGET_MIPS} != "no"
+#.endif # MK_LLVM_TARGET_MIPS
+#.if ${MK_LLVM_TARGET_POWERPC} != "no"
+#.endif # MK_LLVM_TARGET_POWERPC
+#.if ${MK_LLVM_TARGET_RISCV} != "no"
+#.endif # MK_LLVM_TARGET_RISCV
+#.if ${MK_LLVM_TARGET_SPARC} != "no"
+#.endif # MK_LLVM_TARGET_SPARC
+#.if ${MK_LLVM_TARGET_X86} != "no"
+#.endif # MK_LLVM_TARGET_X86
+

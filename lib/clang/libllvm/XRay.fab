@@ -1,0 +1,17 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'XRay';
+
+	if opts.clang_extras
+	{
+		files(
+			BlockIndexer.cpp BlockVerifier.cpp FDRRecordProducer.cpp
+			FDRRecords.cpp FDRTraceExpander.cpp FileHeaderReader.cpp
+			InstrumentationMap.cpp LogBuilderConsumer.cpp RecordInitializer.cpp
+			Trace.cpp
+		)
+	}
+	else []
+};

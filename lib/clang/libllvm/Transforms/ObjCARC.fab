@@ -1,0 +1,18 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Transforms/ObjCARC/DependencyAnalysis.cpp
+#SRCS_EXT+=	Transforms/ObjCARC/ObjCARC.cpp
+#		Transforms/ObjCARC/ObjCARCAPElim.cpp
+#		Transforms/ObjCARC/ObjCARCContract.cpp
+#		Transforms/ObjCARC/ObjCARCExpand.cpp
+#		Transforms/ObjCARC/ObjCARCOpts.cpp
+#		Transforms/ObjCARC/ProvenanceAnalysis.cpp
+#		Transforms/ObjCARC/ProvenanceAnalysisEvaluator.cpp
+#		Transforms/ObjCARC/PtrState.cpp
+	files(
+	)
+};

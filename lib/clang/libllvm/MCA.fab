@@ -1,0 +1,25 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'MCA';
+
+	files(
+		Context.cpp HWEventListener.cpp InstrBuilder.cpp Instruction.cpp
+		Pipeline.cpp Support.cpp
+	)
+	+
+	files(
+		HardwareUnit.cpp LSUnit.cpp RegisterFile.cpp ResourceManager.cpp
+		RetireControlUnit.cpp Scheduler.cpp
+		,
+		subdir = 'HardwareUnits'
+	)
+	+
+	files(
+		DispatchStage.cpp EntryStage.cpp ExecuteStage.cpp
+		InstructionTables.cpp RetireStage.cpp Stage.cpp
+		,
+		subdir = 'Stages'
+	)
+};

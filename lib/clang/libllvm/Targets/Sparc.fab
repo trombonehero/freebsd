@@ -1,0 +1,33 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Target/Sparc/AsmParser/SparcAsmParser.cpp
+#		Target/Sparc/DelaySlotFiller.cpp
+#SRCS_XDW+=	Target/Sparc/Disassembler/SparcDisassembler.cpp
+#		Target/Sparc/InstPrinter/SparcInstPrinter.cpp
+#		Target/Sparc/LeonPasses.cpp
+#		Target/Sparc/MCTargetDesc/SparcAsmBackend.cpp
+#		Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCAsmInfo.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCCodeEmitter.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCExpr.cpp
+#		Target/Sparc/MCTargetDesc/SparcMCTargetDesc.cpp
+#		Target/Sparc/MCTargetDesc/SparcTargetStreamer.cpp
+#		Target/Sparc/SparcAsmPrinter.cpp
+#		Target/Sparc/SparcFrameLowering.cpp
+#		Target/Sparc/SparcISelDAGToDAG.cpp
+#		Target/Sparc/SparcISelLowering.cpp
+#		Target/Sparc/SparcInstrInfo.cpp
+#		Target/Sparc/SparcMCInstLower.cpp
+#		Target/Sparc/SparcMachineFunctionInfo.cpp
+#		Target/Sparc/SparcRegisterInfo.cpp
+#		Target/Sparc/SparcSubtarget.cpp
+#		Target/Sparc/SparcTargetMachine.cpp
+#		Target/Sparc/SparcTargetObjectFile.cpp
+#		Target/Sparc/TargetInfo/SparcTargetInfo.cpp
+	files(
+	)
+};

@@ -1,0 +1,20 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'LTO';
+
+	files(LTO.cpp LTOBackend.cpp UpdateCompilerUsed.cpp)
+	+
+	if opts.exl
+	{
+		files(
+			Caching.cpp
+			LTOCodeGenerator.cpp
+			LTOModule.cpp
+			SummaryBasedOptimizations.cpp
+			ThinLTOCodeGenerator.cpp
+		)
+	}
+	else []
+};

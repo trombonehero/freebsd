@@ -1,0 +1,10 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'Demangle';
+
+	files(ItaniumDemangle.cpp)
+	+
+	if opts.miw files(MicrosoftDemangle.cpp MicrosoftDemangleNodes.cpp) else []
+};

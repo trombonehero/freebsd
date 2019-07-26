@@ -1,0 +1,14 @@
+# $FreeBSD$
+
+sources =
+	import('Coroutines.fab').sources
+	+
+	{
+		subdir = llvmlibdir :: 'Transforms';
+
+		files(
+			AggressiveInstCombine.cpp TruncInstCombine.cpp
+			,
+			subdir = 'AggressiveInstCombine'
+		)
+	}

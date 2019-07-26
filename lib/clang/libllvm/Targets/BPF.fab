@@ -1,0 +1,30 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Target/BPF/AsmParser/BPFAsmParser.cpp
+#		Target/BPF/BPFAsmPrinter.cpp
+#		Target/BPF/BPFFrameLowering.cpp
+#		Target/BPF/BPFISelDAGToDAG.cpp
+#		Target/BPF/BPFISelLowering.cpp
+#		Target/BPF/BPFInstrInfo.cpp
+#		Target/BPF/BPFMCInstLower.cpp
+#		Target/BPF/BPFMIChecking.cpp
+#		Target/BPF/BPFMIPeephole.cpp
+#		Target/BPF/BPFRegisterInfo.cpp
+#		Target/BPF/BPFSelectionDAGInfo.cpp
+#		Target/BPF/BPFSubtarget.cpp
+#		Target/BPF/BPFTargetMachine.cpp
+#		Target/BPF/BTFDebug.cpp
+#		Target/BPF/Disassembler/BPFDisassembler.cpp
+#		Target/BPF/InstPrinter/BPFInstPrinter.cpp
+#		Target/BPF/MCTargetDesc/BPFAsmBackend.cpp
+#		Target/BPF/MCTargetDesc/BPFELFObjectWriter.cpp
+#		Target/BPF/MCTargetDesc/BPFMCCodeEmitter.cpp
+#		Target/BPF/MCTargetDesc/BPFMCTargetDesc.cpp
+#		Target/BPF/TargetInfo/BPFTargetInfo.cpp
+	files(
+	)
+};

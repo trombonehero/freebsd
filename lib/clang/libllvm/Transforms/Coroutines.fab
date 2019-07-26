@@ -1,0 +1,15 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Transforms/Coroutines/CoroCleanup.cpp
+#		Transforms/Coroutines/CoroEarly.cpp
+#		Transforms/Coroutines/CoroElide.cpp
+#		Transforms/Coroutines/CoroFrame.cpp
+#		Transforms/Coroutines/CoroSplit.cpp
+#		Transforms/Coroutines/Coroutines.cpp
+	files(
+	)
+};

@@ -1,0 +1,18 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Transforms/Vectorize/LoadStoreVectorizer.cpp
+#		Transforms/Vectorize/LoopVectorizationLegality.cpp
+#		Transforms/Vectorize/LoopVectorize.cpp
+#		Transforms/Vectorize/SLPVectorizer.cpp
+#		Transforms/Vectorize/VPlan.cpp
+#		Transforms/Vectorize/VPlanHCFGBuilder.cpp
+#		Transforms/Vectorize/VPlanHCFGTransforms.cpp
+#		Transforms/Vectorize/VPlanVerifier.cpp
+#SRCS_EXT+=	Transforms/Vectorize/Vectorize.cpp
+	files(
+	)
+};

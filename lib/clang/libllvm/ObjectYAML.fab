@@ -1,0 +1,17 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'ObjectYAML';
+
+	files(COFFYAML.cpp DWARFYAML.cpp ELFYAML.cpp MachOYAML.cpp)
+	+
+	if opts.clang_extras
+	{
+		files(
+			CodeViewYAMLDebugSections.cpp CodeViewYAMLSymbols.cpp
+			CodeViewYAMLTypes.cpp YAML.cpp
+		)
+	}
+	else []
+};

@@ -1,0 +1,8 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'Option';
+
+	files(Arg.cpp ArgList.cpp OptTable.cpp Option.cpp)
+};

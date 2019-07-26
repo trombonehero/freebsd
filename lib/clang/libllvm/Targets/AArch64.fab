@@ -1,0 +1,65 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: '';
+
+#		Target/AArch64/AArch64A53Fix835769.cpp
+#		Target/AArch64/AArch64A57FPLoadBalancing.cpp
+#		Target/AArch64/AArch64AdvSIMDScalarPass.cpp
+#		Target/AArch64/AArch64AsmPrinter.cpp
+#		Target/AArch64/AArch64BranchTargets.cpp
+#		Target/AArch64/AArch64CallLowering.cpp
+#		Target/AArch64/AArch64CleanupLocalDynamicTLSPass.cpp
+#		Target/AArch64/AArch64CollectLOH.cpp
+#		Target/AArch64/AArch64CompressJumpTables.cpp
+#		Target/AArch64/AArch64CondBrTuning.cpp
+#		Target/AArch64/AArch64ConditionOptimizer.cpp
+#		Target/AArch64/AArch64ConditionalCompares.cpp
+#		Target/AArch64/AArch64DeadRegisterDefinitionsPass.cpp
+#		Target/AArch64/AArch64ExpandPseudoInsts.cpp
+#		Target/AArch64/AArch64FalkorHWPFFix.cpp
+#		Target/AArch64/AArch64FastISel.cpp
+#		Target/AArch64/AArch64FrameLowering.cpp
+#		Target/AArch64/AArch64ISelDAGToDAG.cpp
+#		Target/AArch64/AArch64ISelLowering.cpp
+#		Target/AArch64/AArch64InstrInfo.cpp
+#		Target/AArch64/AArch64InstructionSelector.cpp
+#		Target/AArch64/AArch64LegalizerInfo.cpp
+#		Target/AArch64/AArch64LoadStoreOptimizer.cpp
+#		Target/AArch64/AArch64MCInstLower.cpp
+#		Target/AArch64/AArch64MacroFusion.cpp
+#		Target/AArch64/AArch64PBQPRegAlloc.cpp
+#		Target/AArch64/AArch64PreLegalizerCombiner.cpp
+#		Target/AArch64/AArch64PromoteConstant.cpp
+#		Target/AArch64/AArch64RedundantCopyElimination.cpp
+#		Target/AArch64/AArch64RegisterBankInfo.cpp
+#		Target/AArch64/AArch64RegisterInfo.cpp
+#		Target/AArch64/AArch64SIMDInstrOpt.cpp
+#		Target/AArch64/AArch64SelectionDAGInfo.cpp
+#		Target/AArch64/AArch64SpeculationHardening.cpp
+#		Target/AArch64/AArch64StorePairSuppress.cpp
+#		Target/AArch64/AArch64Subtarget.cpp
+#		Target/AArch64/AArch64TargetMachine.cpp
+#		Target/AArch64/AArch64TargetObjectFile.cpp
+#		Target/AArch64/AArch64TargetTransformInfo.cpp
+#		Target/AArch64/AsmParser/AArch64AsmParser.cpp
+#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64Disassembler.cpp
+#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64ExternalSymbolizer.cpp
+#		Target/AArch64/InstPrinter/AArch64InstPrinter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
+#		Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64ELFStreamer.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCAsmInfo.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCCodeEmitter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCExpr.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MCTargetDesc.cpp
+#		Target/AArch64/MCTargetDesc/AArch64MachObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64TargetStreamer.cpp
+#		Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+#		Target/AArch64/MCTargetDesc/AArch64WinCOFFStreamer.cpp
+#		Target/AArch64/TargetInfo/AArch64TargetInfo.cpp
+#		Target/AArch64/Utils/AArch64BaseInfo.cpp
+	files(
+	)
+};

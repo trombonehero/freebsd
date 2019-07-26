@@ -1,0 +1,19 @@
+# $FreeBSD$
+
+sources =
+{
+	subdir = llvmlibdir :: 'Object';
+
+	files(
+		Archive.cpp ArchiveWriter.cpp Binary.cpp COFFImportFile.cpp
+		COFFModuleDefinition.cpp COFFObjectFile.cpp Decompressor.cpp ELF.cpp
+		ELFObjectFile.cpp Error.cpp IRObjectFile.cpp IRSymtab.cpp
+		MachOObjectFile.cpp MachOUniversal.cpp ModuleSymbolTable.cpp
+		ObjectFile.cpp RecordStreamer.cpp SymbolicFile.cpp WasmObjectFile.cpp
+		WindowsResource.cpp
+	)
+	+
+	if opts.clang_extras files(Object.cpp) else []
+	+
+	if opts.miw files(SymbolSize.cpp) else []
+};

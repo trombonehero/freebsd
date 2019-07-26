@@ -111,13 +111,15 @@ compile = function(compiler:file,
                    dependencies:list[file[in]]=[]
 	): list[file]
 {
-	flags = compile_flags(options, extra_header_dirs);
-
 	# Compile each source file into a corresponding object file and accumulate
 	# all of the object files into a list.
 	foreach src <- srcs {
 		obj = src + '.o';
-		flags = flags + extra_flags + (src.cxxflags ? []);
+		includes = extra_header_dirs + (src.includes ? []);
+
+		flags = compile_flags(options, includes)
+			+ extra_flags
+			+ (src.cxxflags ? []);
 
 		compile_one(compiler, src, obj, flags, dependencies);
 		obj

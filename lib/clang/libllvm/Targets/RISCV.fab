@@ -1,35 +1,26 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'RISCV';
 
-#		Target/RISCV/AsmParser/RISCVAsmParser.cpp
-#		Target/RISCV/Disassembler/RISCVDisassembler.cpp
-#		Target/RISCV/InstPrinter/RISCVInstPrinter.cpp
-#		Target/RISCV/MCTargetDesc/RISCVAsmBackend.cpp
-#		Target/RISCV/MCTargetDesc/RISCVELFObjectWriter.cpp
-#		Target/RISCV/MCTargetDesc/RISCVELFStreamer.cpp
-#		Target/RISCV/MCTargetDesc/RISCVMCAsmInfo.cpp
-#		Target/RISCV/MCTargetDesc/RISCVMCCodeEmitter.cpp
-#		Target/RISCV/MCTargetDesc/RISCVMCExpr.cpp
-#		Target/RISCV/MCTargetDesc/RISCVMCTargetDesc.cpp
-#		Target/RISCV/MCTargetDesc/RISCVTargetStreamer.cpp
-#		Target/RISCV/RISCVAsmPrinter.cpp
-#		Target/RISCV/RISCVExpandPseudoInsts.cpp
-#		Target/RISCV/RISCVFrameLowering.cpp
-#		Target/RISCV/RISCVInstrInfo.cpp
-#		Target/RISCV/RISCVISelDAGToDAG.cpp
-#		Target/RISCV/RISCVISelLowering.cpp
-#		Target/RISCV/RISCVMCInstLower.cpp
-#		Target/RISCV/RISCVMergeBaseOffset.cpp
-#		Target/RISCV/RISCVRegisterInfo.cpp
-#		Target/RISCV/RISCVSubtarget.cpp
-#		Target/RISCV/RISCVTargetMachine.cpp
-#		Target/RISCV/RISCVTargetObjectFile.cpp
-#		Target/RISCV/TargetInfo/RISCVTargetInfo.cpp
-#		Target/RISCV/Utils/RISCVBaseInfo.cpp
-#		Target/RISCV/Utils/RISCVMatInt.cpp
 	files(
+		RISCVAsmPrinter.cpp RISCVExpandPseudoInsts.cpp RISCVFrameLowering.cpp
+		RISCVInstrInfo.cpp RISCVISelDAGToDAG.cpp RISCVISelLowering.cpp
+		RISCVMCInstLower.cpp RISCVMergeBaseOffset.cpp RISCVRegisterInfo.cpp
+		RISCVSubtarget.cpp RISCVTargetMachine.cpp RISCVTargetObjectFile.cpp
 	)
+	+ files(RISCVAsmParser.cpp, subdir='AsmParser')
+	+ files(RISCVDisassembler.cpp, subdir='Disassembler')
+	+ files(RISCVInstPrinter.cpp, subdir='InstPrinter')
+	+ files(
+		RISCVAsmBackend.cpp RISCVELFObjectWriter.cpp RISCVELFStreamer.cpp
+		RISCVMCAsmInfo.cpp RISCVMCCodeEmitter.cpp RISCVMCExpr.cpp
+		RISCVMCTargetDesc.cpp RISCVTargetStreamer.cpp
+		,
+		subdir = 'MCTargetDesc'
+	)
+	+ files(RISCVTargetInfo.cpp, subdir='TargetInfo')
+	+ files(RISCVBaseInfo.cpp RISCVMatInt.cpp, subdir='Utils')
 };

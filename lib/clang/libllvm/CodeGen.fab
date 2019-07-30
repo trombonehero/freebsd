@@ -1,3 +1,4 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
@@ -5,10 +6,15 @@ sources =
 	subdir = llvmlibdir :: 'Bitcode';
 
 	files(
-		Reader/BitReader.cpp Reader/BitcodeReader.cpp Reader/BitstreamReader.cpp
-		Reader/MetadataLoader.cpp Reader/ValueList.cpp
-
-		Writer/BitWriter.cpp Writer/BitcodeWriter.cpp
-		Writer/BitcodeWriterPass.cpp Writer/ValueEnumerator.cpp
+		BitReader.cpp BitcodeReader.cpp BitstreamReader.cpp
+		MetadataLoader.cpp ValueList.cpp
+		,
+		subdir='Reader'
+	)
+	+ files(
+		BitWriter.cpp BitcodeWriter.cpp
+		BitcodeWriterPass.cpp ValueEnumerator.cpp
+		,
+		subdir='Writer'
 	)
 };

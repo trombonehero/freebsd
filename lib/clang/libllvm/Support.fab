@@ -1,3 +1,4 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
@@ -12,10 +13,11 @@ sources =
 		BranchProbability.cpp BuryPointer.cpp CachePruning.cpp Chrono.cpp
 		CodeGenCoverage.cpp CommandLine.cpp Compression.cpp ConvertUTF.cpp
 		ConvertUTFWrapper.cpp CrashRecoveryContext.cpp DAGDeltaAlgorithm.cpp
-		DJB.cpp DataExtractor.cpp Debug.cpp DebugCounter.cpp DeltaAlgorithm.cpp
-		DynamicLibrary.cpp Errno.cpp Error.cpp ErrorHandling.cpp FoldingSet.cpp
-		FormatVariadic.cpp FormattedStream.cpp GlobPattern.cpp GraphWriter.cpp
-		Hashing.cpp Host.cpp InitLLVM.cpp IntEqClasses.cpp IntervalMap.cpp
+		DJB.cpp DataExtractor.cpp Debug.cpp DebugCounter.cpp
+		DeltaAlgorithm.cpp DynamicLibrary.cpp Errno.cpp Error.cpp
+		ErrorHandling.cpp FoldingSet.cpp FormatVariadic.cpp
+		FormattedStream.cpp GlobPattern.cpp GraphWriter.cpp Hashing.cpp
+		Host.cpp InitLLVM.cpp IntEqClasses.cpp IntervalMap.cpp
 		ItaniumManglingCanonicalizer.cpp JSON.cpp JamCRC.cpp KnownBits.cpp
 		LEB128.cpp LineIterator.cpp Locale.cpp LockFileManager.cpp
 		LowLevelType.cpp MD5.cpp ManagedStatic.cpp MathExtras.cpp
@@ -28,20 +30,20 @@ sources =
 		SymbolRemappingReader.cpp TargetParser.cpp TargetRegistry.cpp
 		ThreadLocal.cpp ThreadPool.cpp Threading.cpp Timer.cpp
 		ToolOutputFile.cpp TrigramIndex.cpp Triple.cpp Twine.cpp Unicode.cpp
-		UnicodeCaseFold.cpp Valgrind.cpp VirtualFileSystem.cpp VersionTuple.cpp
-		WithColor.cpp YAMLParser.cpp YAMLTraits.cpp
+		UnicodeCaseFold.cpp Valgrind.cpp VirtualFileSystem.cpp
+		VersionTuple.cpp WithColor.cpp YAMLParser.cpp YAMLTraits.cpp
 
 		circular_raw_ostream.cpp raw_os_ostream.cpp raw_ostream.cpp
 	)
 	#regcomp.c regerror.c regexec.c regfree.c regstrlcpy.c xxhash.cpp
 	+
-	if opts.llvm.clang.extras files(FileUtilities.cpp SystemUtils.cpp) else []
-	+
-	if opts.llvm.exl files(FileOutputBuffer.cpp) else []
-	+
-	if opts.llvm.lld files(Parallel.cpp TarWriter.cpp) else []
-	+
-	if opts.llvm.miw files(COM.cpp) else []
-	+
-	if opts.llvm.xdl files(Memory.cpp) else []
+	(if opts.llvm.clang.extras
+	{
+		files(FileUtilities.cpp SystemUtils.cpp)
+	}
+	else [])
+	+ (if opts.llvm.exl files(FileOutputBuffer.cpp) else [])
+	+ (if opts.llvm.lld files(Parallel.cpp TarWriter.cpp) else [])
+	+ (if opts.llvm.miw files(COM.cpp) else [])
+	+ (if opts.llvm.xdl files(Memory.cpp) else [])
 };

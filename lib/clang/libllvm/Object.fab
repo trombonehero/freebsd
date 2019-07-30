@@ -1,3 +1,4 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
@@ -12,8 +13,6 @@ sources =
 		ObjectFile.cpp RecordStreamer.cpp SymbolicFile.cpp WasmObjectFile.cpp
 		WindowsResource.cpp
 	)
-	+
-	(if opts.llvm.clang.extras files(Object.cpp) else [])
-	+
-	(if opts.llvm.miw files(SymbolSize.cpp) else [])
+	+ (if opts.llvm.clang.extras files(Object.cpp) else [])
+	+ (if opts.llvm.miw files(SymbolSize.cpp) else [])
 };

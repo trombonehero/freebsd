@@ -1,65 +1,45 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Target';
 
-#		Target/ARM/A15SDOptimizer.cpp
-#		Target/ARM/ARMAsmPrinter.cpp
-#		Target/ARM/ARMBaseInstrInfo.cpp
-#		Target/ARM/ARMBaseRegisterInfo.cpp
-#		Target/ARM/ARMCallLowering.cpp
-#		Target/ARM/ARMCodeGenPrepare.cpp
-#		Target/ARM/ARMComputeBlockSize.cpp
-#		Target/ARM/ARMConstantIslandPass.cpp
-#		Target/ARM/ARMConstantPoolValue.cpp
-#		Target/ARM/ARMExpandPseudoInsts.cpp
-#		Target/ARM/ARMFastISel.cpp
-#		Target/ARM/ARMFrameLowering.cpp
-#		Target/ARM/ARMHazardRecognizer.cpp
-#		Target/ARM/ARMISelDAGToDAG.cpp
-#		Target/ARM/ARMISelLowering.cpp
-#		Target/ARM/ARMInstrInfo.cpp
-#		Target/ARM/ARMInstructionSelector.cpp
-#		Target/ARM/ARMLegalizerInfo.cpp
-#		Target/ARM/ARMLoadStoreOptimizer.cpp
-#		Target/ARM/ARMMCInstLower.cpp
-#		Target/ARM/ARMMachineFunctionInfo.cpp
-#		Target/ARM/ARMMacroFusion.cpp
-#		Target/ARM/ARMOptimizeBarriersPass.cpp
-#		Target/ARM/ARMParallelDSP.cpp
-#		Target/ARM/ARMRegisterBankInfo.cpp
-#		Target/ARM/ARMRegisterInfo.cpp
-#		Target/ARM/ARMSelectionDAGInfo.cpp
-#		Target/ARM/ARMSubtarget.cpp
-#		Target/ARM/ARMTargetMachine.cpp
-#		Target/ARM/ARMTargetObjectFile.cpp
-#		Target/ARM/ARMTargetTransformInfo.cpp
-#		Target/ARM/AsmParser/ARMAsmParser.cpp
-#		Target/ARM/Disassembler/ARMDisassembler.cpp
-#		Target/ARM/InstPrinter/ARMInstPrinter.cpp
-#		Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
-#		Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
-#		Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
-#		Target/ARM/MCTargetDesc/ARMMCAsmInfo.cpp
-#		Target/ARM/MCTargetDesc/ARMMCCodeEmitter.cpp
-#		Target/ARM/MCTargetDesc/ARMMCExpr.cpp
-#		Target/ARM/MCTargetDesc/ARMMCTargetDesc.cpp
-#		Target/ARM/MCTargetDesc/ARMMachORelocationInfo.cpp
-#		Target/ARM/MCTargetDesc/ARMMachObjectWriter.cpp
-#		Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
-#		Target/ARM/MCTargetDesc/ARMUnwindOpAsm.cpp
-#		Target/ARM/MCTargetDesc/ARMWinCOFFObjectWriter.cpp
-#		Target/ARM/MCTargetDesc/ARMWinCOFFStreamer.cpp
-#		Target/ARM/MLxExpansionPass.cpp
-#		Target/ARM/TargetInfo/ARMTargetInfo.cpp
-#		Target/ARM/Thumb1FrameLowering.cpp
-#		Target/ARM/Thumb1InstrInfo.cpp
-#		Target/ARM/Thumb2ITBlockPass.cpp
-#		Target/ARM/Thumb2InstrInfo.cpp
-#		Target/ARM/Thumb2SizeReduction.cpp
-#		Target/ARM/ThumbRegisterInfo.cpp
-#		Target/ARM/Utils/ARMBaseInfo.cpp
 	files(
+		A15SDOptimizer.cpp ARMAsmPrinter.cpp ARMBaseInstrInfo.cpp
+		ARMBaseRegisterInfo.cpp ARMCallLowering.cpp ARMCodeGenPrepare.cpp
+		ARMComputeBlockSize.cpp ARMConstantIslandPass.cpp
+		ARMConstantPoolValue.cpp ARMExpandPseudoInsts.cpp ARMFastISel.cpp
+		ARMFrameLowering.cpp ARMHazardRecognizer.cpp ARMISelDAGToDAG.cpp
+		ARMISelLowering.cpp ARMInstrInfo.cpp ARMInstructionSelector.cpp
+		ARMLegalizerInfo.cpp ARMLoadStoreOptimizer.cpp ARMMCInstLower.cpp
+		ARMMachineFunctionInfo.cpp ARMMacroFusion.cpp
+		ARMOptimizeBarriersPass.cpp ARMParallelDSP.cpp ARMRegisterBankInfo.cpp
+		ARMRegisterInfo.cpp ARMSelectionDAGInfo.cpp ARMSubtarget.cpp
+		ARMTargetMachine.cpp ARMTargetObjectFile.cpp
+		ARMTargetTransformInfo.cpp MLxExpansionPass.cpp
+		Thumb1FrameLowering.cpp Thumb1InstrInfo.cpp Thumb2ITBlockPass.cpp
+		Thumb2InstrInfo.cpp Thumb2SizeReduction.cpp ThumbRegisterInfo.cpp
+		,
+		subdir = 'ARM'
 	)
+	+
+	{
+		subdir = subdir :: 'ARM';
+
+		files(ARMAsmParser.cpp, subdir='AsmParser')
+		+ files(ARMDisassembler.cpp, subdir='Disassembler')
+		+ files(ARMInstPrinter.cpp, subdir='InstPrinter')
+		+ files(
+			ARMAsmBackend.cpp ARMELFObjectWriter.cpp ARMELFStreamer.cpp
+			ARMMCAsmInfo.cpp ARMMCCodeEmitter.cpp ARMMCExpr.cpp
+			ARMMCTargetDesc.cpp ARMMachORelocationInfo.cpp
+			ARMMachObjectWriter.cpp ARMTargetStreamer.cpp ARMUnwindOpAsm.cpp
+			ARMWinCOFFObjectWriter.cpp ARMWinCOFFStreamer.cpp
+			,
+			subdir = 'MCTargetDesc'
+		)
+		+ files(ARMTargetInfo.cpp, subdir='TargetInfo')
+		+ files(ARMBaseInfo.cpp, subdir='Utils')
+	}
 };

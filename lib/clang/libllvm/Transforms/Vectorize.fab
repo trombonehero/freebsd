@@ -1,18 +1,26 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/Vectorize/LoadStoreVectorizer.cpp
-#		Transforms/Vectorize/LoopVectorizationLegality.cpp
-#		Transforms/Vectorize/LoopVectorize.cpp
-#		Transforms/Vectorize/SLPVectorizer.cpp
-#		Transforms/Vectorize/VPlan.cpp
-#		Transforms/Vectorize/VPlanHCFGBuilder.cpp
-#		Transforms/Vectorize/VPlanHCFGTransforms.cpp
-#		Transforms/Vectorize/VPlanVerifier.cpp
-#SRCS_EXT+=	Transforms/Vectorize/Vectorize.cpp
 	files(
+		LoadStoreVectorizer.cpp
+		LoopVectorizationLegality.cpp
+		LoopVectorize.cpp
+		SLPVectorizer.cpp
+		VPlan.cpp
+		VPlanHCFGBuilder.cpp
+		VPlanHCFGTransforms.cpp
+		VPlanVerifier.cpp
+		,
+		subdir = 'Vectorize'
 	)
+	+
+	(if opts.llvm.clang.extras
+	{
+		files(Vectorize.cpp, subdir='Vectorize')
+	}
+	else [])
 };

@@ -1,4 +1,151 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
+
+build = opts.llvm.targets;
+
+## Note: some rules are superfluous, not every combination is valid.
+#.for arch in \
+#	AArch64/AArch64 ARM/ARM BPF/BPF Mips/Mips PowerPC/PPC Sparc/Sparc \
+#	RISCV/RISCV X86/X86
+#. for hdr in \
+#	AsmMatcher/-gen-asm-matcher \
+#	AsmWriter1/-gen-asm-writer,-asmwriternum=1 \
+#	AsmWriter/-gen-asm-writer \
+#	CallingConv/-gen-callingconv \
+#	CodeEmitter/-gen-emitter \
+#	CompressInstEmitter/-gen-compress-inst-emitter \
+#	DAGISel/-gen-dag-isel \
+#	DisassemblerTables/-gen-disassembler \
+#	EVEX2VEXTables/-gen-x86-EVEX2VEX-tables \
+#	FastISel/-gen-fast-isel \
+#	GlobalISel/-gen-global-isel \
+#	InstrInfo/-gen-instr-info \
+#	MCCodeEmitter/-gen-emitter \
+#	MCPseudoLowering/-gen-pseudo-lowering \
+#	RegisterBank/-gen-register-bank \
+#	RegisterInfo/-gen-register-info \
+#	SubtargetInfo/-gen-subtarget \
+#	SystemOperands/-gen-searchable-tables \
+#	SystemRegister/-gen-searchable-tables
+#${arch:T}Gen${hdr:H}.inc: ${LLVM_SRCS}/lib/Target/${arch:H}/${arch:T}.td
+#	${LLVM_TBLGEN} ${hdr:T:C/,/ /g} \
+#	    -I ${LLVM_SRCS}/include -I ${LLVM_SRCS}/lib/Target/${arch:H} \
+#	    -d ${.TARGET}.d -o ${.TARGET} \
+#	    ${LLVM_SRCS}/lib/Target/${arch:H}/${arch:T}.td
+#. endfor
+#.endfor
+#.if ${MK_LLVM_TARGET_AARCH64} != "no"
+#TGHDRS+=	AArch64GenAsmMatcher.inc
+#TGHDRS+=	AArch64GenAsmWriter.inc
+#TGHDRS+=	AArch64GenAsmWriter1.inc
+#TGHDRS+=	AArch64GenCallingConv.inc
+#TGHDRS+=	AArch64GenDAGISel.inc
+#TGHDRS+=	AArch64GenDisassemblerTables.inc
+#TGHDRS+=	AArch64GenFastISel.inc
+#TGHDRS+=	AArch64GenGlobalISel.inc
+#TGHDRS+=	AArch64GenInstrInfo.inc
+#TGHDRS+=	AArch64GenMCCodeEmitter.inc
+#TGHDRS+=	AArch64GenMCPseudoLowering.inc
+#TGHDRS+=	AArch64GenRegisterBank.inc
+#TGHDRS+=	AArch64GenRegisterInfo.inc
+#TGHDRS+=	AArch64GenSubtargetInfo.inc
+#TGHDRS+=	AArch64GenSystemOperands.inc
+#.endif # MK_LLVM_TARGET_AARCH64
+#.if ${MK_LLVM_TARGET_ARM} != "no"
+#TGHDRS+=	ARMGenAsmMatcher.inc
+#TGHDRS+=	ARMGenAsmWriter.inc
+#TGHDRS+=	ARMGenCallingConv.inc
+#TGHDRS+=	ARMGenDAGISel.inc
+#TGHDRS+=	ARMGenDisassemblerTables.inc
+#TGHDRS+=	ARMGenFastISel.inc
+#TGHDRS+=	ARMGenGlobalISel.inc
+#TGHDRS+=	ARMGenInstrInfo.inc
+#TGHDRS+=	ARMGenMCCodeEmitter.inc
+#TGHDRS+=	ARMGenMCPseudoLowering.inc
+#TGHDRS+=	ARMGenRegisterBank.inc
+#TGHDRS+=	ARMGenRegisterInfo.inc
+#TGHDRS+=	ARMGenSubtargetInfo.inc
+#TGHDRS+=	ARMGenSystemRegister.inc
+#.endif # MK_LLVM_TARGET_ARM
+#.if ${MK_LLVM_TARGET_BPF} != "no"
+#TGHDRS+=	BPFGenAsmMatcher.inc
+#TGHDRS+=	BPFGenAsmWriter.inc
+#TGHDRS+=	BPFGenCallingConv.inc
+#TGHDRS+=	BPFGenDAGISel.inc
+#TGHDRS+=	BPFGenDisassemblerTables.inc
+#TGHDRS+=	BPFGenInstrInfo.inc
+#TGHDRS+=	BPFGenMCCodeEmitter.inc
+#TGHDRS+=	BPFGenRegisterInfo.inc
+#TGHDRS+=	BPFGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_BPF
+#.if ${MK_LLVM_TARGET_MIPS} != "no"
+#TGHDRS+=	MipsGenAsmMatcher.inc
+#TGHDRS+=	MipsGenAsmWriter.inc
+#TGHDRS+=	MipsGenCallingConv.inc
+#TGHDRS+=	MipsGenDAGISel.inc
+#TGHDRS+=	MipsGenDisassemblerTables.inc
+#TGHDRS+=	MipsGenFastISel.inc
+#TGHDRS+=	MipsGenGlobalISel.inc
+#TGHDRS+=	MipsGenInstrInfo.inc
+#TGHDRS+=	MipsGenMCCodeEmitter.inc
+#TGHDRS+=	MipsGenMCPseudoLowering.inc
+#TGHDRS+=	MipsGenRegisterBank.inc
+#TGHDRS+=	MipsGenRegisterInfo.inc
+#TGHDRS+=	MipsGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_MIPS
+#.if ${MK_LLVM_TARGET_POWERPC} != "no"
+#TGHDRS+=	PPCGenAsmMatcher.inc
+#TGHDRS+=	PPCGenAsmWriter.inc
+#TGHDRS+=	PPCGenCallingConv.inc
+#TGHDRS+=	PPCGenDAGISel.inc
+#TGHDRS+=	PPCGenDisassemblerTables.inc
+#TGHDRS+=	PPCGenFastISel.inc
+#TGHDRS+=	PPCGenInstrInfo.inc
+#TGHDRS+=	PPCGenMCCodeEmitter.inc
+#TGHDRS+=	PPCGenRegisterInfo.inc
+#TGHDRS+=	PPCGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_POWERPC
+#.if ${MK_LLVM_TARGET_RISCV} != "no"
+#TGHDRS+=	RISCVGenAsmMatcher.inc
+#TGHDRS+=	RISCVGenAsmWriter.inc
+#TGHDRS+=	RISCVGenCallingConv.inc
+#TGHDRS+=	RISCVGenCompressInstEmitter.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenDisassemblerTables.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenInstrInfo.inc
+#TGHDRS+=	RISCVGenMCCodeEmitter.inc
+#TGHDRS+=	RISCVGenMCPseudoLowering.inc
+#TGHDRS+=	RISCVGenRegisterInfo.inc
+#TGHDRS+=	RISCVGenSubtargetInfo.inc
+#TGHDRS+=	RISCVGenSystemOperands.inc
+#.endif # MK_LLVM_TARGET_RISCV
+#.if ${MK_LLVM_TARGET_SPARC} != "no"
+#TGHDRS+=	SparcGenAsmMatcher.inc
+#TGHDRS+=	SparcGenAsmWriter.inc
+#TGHDRS+=	SparcGenCallingConv.inc
+#TGHDRS+=	SparcGenDAGISel.inc
+#TGHDRS+=	SparcGenDisassemblerTables.inc
+#TGHDRS+=	SparcGenInstrInfo.inc
+#TGHDRS+=	SparcGenMCCodeEmitter.inc
+#TGHDRS+=	SparcGenRegisterInfo.inc
+#TGHDRS+=	SparcGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_SPARC
+#.if ${MK_LLVM_TARGET_X86} != "no"
+#TGHDRS+=	X86GenAsmMatcher.inc
+#TGHDRS+=	X86GenAsmWriter.inc
+#TGHDRS+=	X86GenAsmWriter1.inc
+#TGHDRS+=	X86GenCallingConv.inc
+#TGHDRS+=	X86GenDAGISel.inc
+#TGHDRS+=	X86GenDisassemblerTables.inc
+#TGHDRS+=	X86GenEVEX2VEXTables.inc
+#TGHDRS+=	X86GenFastISel.inc
+#TGHDRS+=	X86GenGlobalISel.inc
+#TGHDRS+=	X86GenInstrInfo.inc
+#TGHDRS+=	X86GenRegisterBank.inc
+#TGHDRS+=	X86GenRegisterInfo.inc
+#TGHDRS+=	X86GenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_X86
 
 sources =
 	{
@@ -8,22 +155,16 @@ sources =
 			Target.cpp TargetIntrinsicInfo.cpp TargetLoweringObjectFile.cpp
 			TargetMachine.cpp TargetMachineC.cpp
 		)
-	};
+	}
+	;
 
-#.if ${MK_LLVM_TARGET_AARCH64} != "no"
-#.endif # MK_LLVM_TARGET_AARCH64
-#.if ${MK_LLVM_TARGET_ARM} != "no"
-#.endif # MK_LLVM_TARGET_ARM
-#.if ${MK_LLVM_TARGET_BPF} != "no"
-#.endif # MK_LLVM_TARGET_BPF
-#.if ${MK_LLVM_TARGET_MIPS} != "no"
-#.endif # MK_LLVM_TARGET_MIPS
-#.if ${MK_LLVM_TARGET_POWERPC} != "no"
-#.endif # MK_LLVM_TARGET_POWERPC
-#.if ${MK_LLVM_TARGET_RISCV} != "no"
-#.endif # MK_LLVM_TARGET_RISCV
-#.if ${MK_LLVM_TARGET_SPARC} != "no"
-#.endif # MK_LLVM_TARGET_SPARC
-#.if ${MK_LLVM_TARGET_X86} != "no"
-#.endif # MK_LLVM_TARGET_X86
-
+currently_ignored_sources =
+	+ (if build.aarch64 import('AArch64.fab').sources else [])
+	+ (if build.arm import('ARM.fab').sources else [])
+	+ (if build.bpf import('BPF.fab').sources else [])
+	+ (if build.mips import('Mips.fab').sources else [])
+	+ (if build.powerpc import('PowerPC.fab').sources else [])
+	+ (if build.riscv import('RISCV.fab').sources else [])
+	+ (if build.sparc import('Sparc.fab').sources else [])
+	+ (if build.x86 import('X86.fab').sources else [])
+	;

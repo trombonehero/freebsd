@@ -1,22 +1,23 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/InstCombine/InstCombineAddSub.cpp
-#		Transforms/InstCombine/InstCombineAndOrXor.cpp
-#		Transforms/InstCombine/InstCombineCalls.cpp
-#		Transforms/InstCombine/InstCombineCasts.cpp
-#		Transforms/InstCombine/InstCombineCompares.cpp
-#		Transforms/InstCombine/InstCombineLoadStoreAlloca.cpp
-#		Transforms/InstCombine/InstCombineMulDivRem.cpp
-#		Transforms/InstCombine/InstCombinePHI.cpp
-#		Transforms/InstCombine/InstCombineSelect.cpp
-#		Transforms/InstCombine/InstCombineShifts.cpp
-#		Transforms/InstCombine/InstCombineSimplifyDemanded.cpp
-#		Transforms/InstCombine/InstCombineVectorOps.cpp
-#		Transforms/InstCombine/InstructionCombining.cpp
+	ignored_until_we_do_more_tablegen = files(
+		InstCombineSimplifyDemanded.cpp InstCombineVectorOps.cpp
+		,
+		subdir='InstCombine'
+	);
+
 	files(
+		InstCombineAddSub.cpp InstCombineAndOrXor.cpp InstCombineCalls.cpp
+		InstCombineCasts.cpp InstCombineCompares.cpp
+		InstCombineLoadStoreAlloca.cpp InstCombineMulDivRem.cpp
+		InstCombinePHI.cpp InstCombineSelect.cpp InstCombineShifts.cpp
+		InstructionCombining.cpp
+		,
+		subdir = 'InstCombine'
 	)
 };

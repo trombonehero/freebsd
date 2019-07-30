@@ -1,15 +1,14 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/Coroutines/CoroCleanup.cpp
-#		Transforms/Coroutines/CoroEarly.cpp
-#		Transforms/Coroutines/CoroElide.cpp
-#		Transforms/Coroutines/CoroFrame.cpp
-#		Transforms/Coroutines/CoroSplit.cpp
-#		Transforms/Coroutines/Coroutines.cpp
 	files(
+		CoroCleanup.cpp CoroEarly.cpp CoroElide.cpp CoroFrame.cpp
+		CoroSplit.cpp Coroutines.cpp
+		,
+		subdir = 'Coroutines'
 	)
 };

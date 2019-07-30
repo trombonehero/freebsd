@@ -1,52 +1,38 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'PowerPC';	# TODO: fix :::
 
-#		Target/PowerPC/AsmParser/PPCAsmParser.cpp
-#		Target/PowerPC/Disassembler/PPCDisassembler.cpp
-#		Target/PowerPC/InstPrinter/PPCInstPrinter.cpp
-#		Target/PowerPC/MCTargetDesc/PPCAsmBackend.cpp
-#		Target/PowerPC/MCTargetDesc/PPCELFObjectWriter.cpp
-#		Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp
-#		Target/PowerPC/MCTargetDesc/PPCMCCodeEmitter.cpp
-#		Target/PowerPC/MCTargetDesc/PPCMCExpr.cpp
-#		Target/PowerPC/MCTargetDesc/PPCMCTargetDesc.cpp
-#		Target/PowerPC/MCTargetDesc/PPCMachObjectWriter.cpp
-#		Target/PowerPC/MCTargetDesc/PPCPredicates.cpp
-#		Target/PowerPC/PPCAsmPrinter.cpp
-#		Target/PowerPC/PPCBoolRetToInt.cpp
-#		Target/PowerPC/PPCBranchCoalescing.cpp
-#		Target/PowerPC/PPCBranchSelector.cpp
-#		Target/PowerPC/PPCCCState.cpp
-#		Target/PowerPC/PPCCTRLoops.cpp
-#		Target/PowerPC/PPCEarlyReturn.cpp
-#		Target/PowerPC/PPCExpandISEL.cpp
-#		Target/PowerPC/PPCFastISel.cpp
-#		Target/PowerPC/PPCFrameLowering.cpp
-#		Target/PowerPC/PPCHazardRecognizers.cpp
-#		Target/PowerPC/PPCISelDAGToDAG.cpp
-#		Target/PowerPC/PPCISelLowering.cpp
-#		Target/PowerPC/PPCInstrInfo.cpp
-#		Target/PowerPC/PPCLoopPreIncPrep.cpp
-#		Target/PowerPC/PPCMCInstLower.cpp
-#		Target/PowerPC/PPCMIPeephole.cpp
-#		Target/PowerPC/PPCMachineFunctionInfo.cpp
-#		Target/PowerPC/PPCPreEmitPeephole.cpp
-#		Target/PowerPC/PPCQPXLoadSplat.cpp
-#		Target/PowerPC/PPCReduceCRLogicals.cpp
-#		Target/PowerPC/PPCRegisterInfo.cpp
-#		Target/PowerPC/PPCSubtarget.cpp
-#		Target/PowerPC/PPCTLSDynamicCall.cpp
-#		Target/PowerPC/PPCTOCRegDeps.cpp
-#		Target/PowerPC/PPCTargetMachine.cpp
-#		Target/PowerPC/PPCTargetObjectFile.cpp
-#		Target/PowerPC/PPCTargetTransformInfo.cpp
-#		Target/PowerPC/PPCVSXCopy.cpp
-#		Target/PowerPC/PPCVSXFMAMutate.cpp
-#		Target/PowerPC/PPCVSXSwapRemoval.cpp
-#		Target/PowerPC/TargetInfo/PowerPCTargetInfo.cpp
 	files(
+		PPCAsmPrinter.cpp PPCBoolRetToInt.cpp PPCBranchCoalescing.cpp
+		PPCBranchSelector.cpp PPCCCState.cpp PPCCTRLoops.cpp
+		PPCEarlyReturn.cpp PPCExpandISEL.cpp PPCFastISel.cpp
+		PPCFrameLowering.cpp PPCHazardRecognizers.cpp
+		PPCISelDAGToDAG.cpp PPCISelLowering.cpp PPCInstrInfo.cpp
+		PPCLoopPreIncPrep.cpp PPCMCInstLower.cpp PPCMIPeephole.cpp
+		PPCMachineFunctionInfo.cpp PPCPreEmitPeephole.cpp
+		PPCQPXLoadSplat.cpp PPCReduceCRLogicals.cpp PPCRegisterInfo.cpp
+		PPCSubtarget.cpp PPCTLSDynamicCall.cpp PPCTOCRegDeps.cpp
+		PPCTargetMachine.cpp PPCTargetObjectFile.cpp
+		PPCTargetTransformInfo.cpp PPCVSXCopy.cpp PPCVSXFMAMutate.cpp
+		PPCVSXSwapRemoval.cpp
 	)
+	+ files(PPCAsmParser.cpp, subdir='AsmParser')
+	+ files(PPCDisassembler.cpp, subdir='Disassembler')
+	+ files(PPCInstPrinter.cpp, subdir='InstPrinter')
+	+ files(
+		PPCAsmBackend.cpp
+		PPCELFObjectWriter.cpp
+		PPCMCAsmInfo.cpp
+		PPCMCCodeEmitter.cpp
+		PPCMCExpr.cpp
+		PPCMCTargetDesc.cpp
+		PPCMachObjectWriter.cpp
+		PPCPredicates.cpp
+		,
+		subdir='MCTargetDesc'
+	)
+	+ files(PowerPCTargetInfo.cpp, subdir='TargetInfo')
 };

@@ -1,64 +1,44 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'Mips';	# TODO: fix :::
 
-#		Target/Mips/AsmParser/MipsAsmParser.cpp
-#SRCS_XDW+=	Target/Mips/Disassembler/MipsDisassembler.cpp
-#		Target/Mips/InstPrinter/MipsInstPrinter.cpp
-#		Target/Mips/MCTargetDesc/MipsABIFlagsSection.cpp
-#		Target/Mips/MCTargetDesc/MipsABIInfo.cpp
-#		Target/Mips/MCTargetDesc/MipsAsmBackend.cpp
-#		Target/Mips/MCTargetDesc/MipsELFObjectWriter.cpp
-#		Target/Mips/MCTargetDesc/MipsELFStreamer.cpp
-#		Target/Mips/MCTargetDesc/MipsMCAsmInfo.cpp
-#		Target/Mips/MCTargetDesc/MipsMCCodeEmitter.cpp
-#		Target/Mips/MCTargetDesc/MipsMCExpr.cpp
-#		Target/Mips/MCTargetDesc/MipsMCTargetDesc.cpp
-#		Target/Mips/MCTargetDesc/MipsNaClELFStreamer.cpp
-#		Target/Mips/MCTargetDesc/MipsOptionRecord.cpp
-#		Target/Mips/MCTargetDesc/MipsTargetStreamer.cpp
-#		Target/Mips/MicroMipsSizeReduction.cpp
-#		Target/Mips/Mips16FrameLowering.cpp
-#		Target/Mips/Mips16HardFloat.cpp
-#		Target/Mips/Mips16HardFloatInfo.cpp
-#		Target/Mips/Mips16ISelDAGToDAG.cpp
-#		Target/Mips/Mips16ISelLowering.cpp
-#		Target/Mips/Mips16InstrInfo.cpp
-#		Target/Mips/Mips16RegisterInfo.cpp
-#		Target/Mips/MipsAnalyzeImmediate.cpp
-#		Target/Mips/MipsAsmPrinter.cpp
-#		Target/Mips/MipsBranchExpansion.cpp
-#		Target/Mips/MipsCCState.cpp
-#		Target/Mips/MipsCallLowering.cpp
-#		Target/Mips/MipsConstantIslandPass.cpp
-#		Target/Mips/MipsDelaySlotFiller.cpp
-#		Target/Mips/MipsExpandPseudo.cpp
-#		Target/Mips/MipsFastISel.cpp
-#		Target/Mips/MipsFrameLowering.cpp
-#		Target/Mips/MipsISelDAGToDAG.cpp
-#		Target/Mips/MipsISelLowering.cpp
-#		Target/Mips/MipsInstrInfo.cpp
-#		Target/Mips/MipsInstructionSelector.cpp
-#		Target/Mips/MipsLegalizerInfo.cpp
-#		Target/Mips/MipsMCInstLower.cpp
-#		Target/Mips/MipsMachineFunction.cpp
-#		Target/Mips/MipsModuleISelDAGToDAG.cpp
-#		Target/Mips/MipsOptimizePICCall.cpp
-#		Target/Mips/MipsOs16.cpp
-#		Target/Mips/MipsPreLegalizerCombiner.cpp
-#		Target/Mips/MipsRegisterBankInfo.cpp
-#		Target/Mips/MipsRegisterInfo.cpp
-#		Target/Mips/MipsSEFrameLowering.cpp
-#		Target/Mips/MipsSEISelDAGToDAG.cpp
-#		Target/Mips/MipsSEISelLowering.cpp
-#		Target/Mips/MipsSEInstrInfo.cpp
-#		Target/Mips/MipsSERegisterInfo.cpp
-#		Target/Mips/MipsSubtarget.cpp
-#		Target/Mips/MipsTargetMachine.cpp
-#		Target/Mips/MipsTargetObjectFile.cpp
-#		Target/Mips/TargetInfo/MipsTargetInfo.cpp
 	files(
+		MicroMipsSizeReduction.cpp Mips16FrameLowering.cpp
+		Mips16HardFloat.cpp Mips16HardFloatInfo.cpp
+		Mips16ISelDAGToDAG.cpp Mips16ISelLowering.cpp
+		Mips16InstrInfo.cpp Mips16RegisterInfo.cpp
+		MipsAnalyzeImmediate.cpp MipsAsmPrinter.cpp
+		MipsBranchExpansion.cpp MipsCCState.cpp MipsCallLowering.cpp
+		MipsConstantIslandPass.cpp MipsDelaySlotFiller.cpp
+		MipsExpandPseudo.cpp MipsFastISel.cpp MipsFrameLowering.cpp
+		MipsISelDAGToDAG.cpp MipsISelLowering.cpp MipsInstrInfo.cpp
+		MipsInstructionSelector.cpp MipsLegalizerInfo.cpp
+		MipsMCInstLower.cpp MipsMachineFunction.cpp
+		MipsModuleISelDAGToDAG.cpp MipsOptimizePICCall.cpp MipsOs16.cpp
+		MipsPreLegalizerCombiner.cpp MipsRegisterBankInfo.cpp
+		MipsRegisterInfo.cpp MipsSEFrameLowering.cpp
+		MipsSEISelDAGToDAG.cpp MipsSEISelLowering.cpp
+		MipsSEInstrInfo.cpp MipsSERegisterInfo.cpp MipsSubtarget.cpp
+		MipsTargetMachine.cpp MipsTargetObjectFile.cpp
 	)
+	+ files(MipsAsmParser.cpp, subdir='AsmParser')
+	+ files(MipsInstPrinter.cpp, subdir='InstPrinter')
+	+ files(
+		MipsABIFlagsSection.cpp MipsABIInfo.cpp MipsAsmBackend.cpp
+		MipsELFObjectWriter.cpp MipsELFStreamer.cpp MipsMCAsmInfo.cpp
+		MipsMCCodeEmitter.cpp MipsMCExpr.cpp MipsMCTargetDesc.cpp
+		MipsNaClELFStreamer.cpp MipsOptionRecord.cpp
+		MipsTargetStreamer.cpp
+		,
+		subdir = 'MCTargetDesc'
+	)
+	+ files(MipsTargetInfo.cpp, subdir='TargetInfo')
+	+ (if opts.llvm.xdw
+	{
+		files(MipsDisassembler.cpp, subdir='Disassembler')
+	}
+	else [])
 };

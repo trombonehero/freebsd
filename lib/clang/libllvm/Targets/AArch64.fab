@@ -1,65 +1,54 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'AArch64';		# TODO: fix :::
 
-#		Target/AArch64/AArch64A53Fix835769.cpp
-#		Target/AArch64/AArch64A57FPLoadBalancing.cpp
-#		Target/AArch64/AArch64AdvSIMDScalarPass.cpp
-#		Target/AArch64/AArch64AsmPrinter.cpp
-#		Target/AArch64/AArch64BranchTargets.cpp
-#		Target/AArch64/AArch64CallLowering.cpp
-#		Target/AArch64/AArch64CleanupLocalDynamicTLSPass.cpp
-#		Target/AArch64/AArch64CollectLOH.cpp
-#		Target/AArch64/AArch64CompressJumpTables.cpp
-#		Target/AArch64/AArch64CondBrTuning.cpp
-#		Target/AArch64/AArch64ConditionOptimizer.cpp
-#		Target/AArch64/AArch64ConditionalCompares.cpp
-#		Target/AArch64/AArch64DeadRegisterDefinitionsPass.cpp
-#		Target/AArch64/AArch64ExpandPseudoInsts.cpp
-#		Target/AArch64/AArch64FalkorHWPFFix.cpp
-#		Target/AArch64/AArch64FastISel.cpp
-#		Target/AArch64/AArch64FrameLowering.cpp
-#		Target/AArch64/AArch64ISelDAGToDAG.cpp
-#		Target/AArch64/AArch64ISelLowering.cpp
-#		Target/AArch64/AArch64InstrInfo.cpp
-#		Target/AArch64/AArch64InstructionSelector.cpp
-#		Target/AArch64/AArch64LegalizerInfo.cpp
-#		Target/AArch64/AArch64LoadStoreOptimizer.cpp
-#		Target/AArch64/AArch64MCInstLower.cpp
-#		Target/AArch64/AArch64MacroFusion.cpp
-#		Target/AArch64/AArch64PBQPRegAlloc.cpp
-#		Target/AArch64/AArch64PreLegalizerCombiner.cpp
-#		Target/AArch64/AArch64PromoteConstant.cpp
-#		Target/AArch64/AArch64RedundantCopyElimination.cpp
-#		Target/AArch64/AArch64RegisterBankInfo.cpp
-#		Target/AArch64/AArch64RegisterInfo.cpp
-#		Target/AArch64/AArch64SIMDInstrOpt.cpp
-#		Target/AArch64/AArch64SelectionDAGInfo.cpp
-#		Target/AArch64/AArch64SpeculationHardening.cpp
-#		Target/AArch64/AArch64StorePairSuppress.cpp
-#		Target/AArch64/AArch64Subtarget.cpp
-#		Target/AArch64/AArch64TargetMachine.cpp
-#		Target/AArch64/AArch64TargetObjectFile.cpp
-#		Target/AArch64/AArch64TargetTransformInfo.cpp
-#		Target/AArch64/AsmParser/AArch64AsmParser.cpp
-#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64Disassembler.cpp
-#SRCS_XDW+=	Target/AArch64/Disassembler/AArch64ExternalSymbolizer.cpp
-#		Target/AArch64/InstPrinter/AArch64InstPrinter.cpp
-#		Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-#		Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
-#		Target/AArch64/MCTargetDesc/AArch64ELFStreamer.cpp
-#		Target/AArch64/MCTargetDesc/AArch64MCAsmInfo.cpp
-#		Target/AArch64/MCTargetDesc/AArch64MCCodeEmitter.cpp
-#		Target/AArch64/MCTargetDesc/AArch64MCExpr.cpp
-#		Target/AArch64/MCTargetDesc/AArch64MCTargetDesc.cpp
-#		Target/AArch64/MCTargetDesc/AArch64MachObjectWriter.cpp
-#		Target/AArch64/MCTargetDesc/AArch64TargetStreamer.cpp
-#		Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-#		Target/AArch64/MCTargetDesc/AArch64WinCOFFStreamer.cpp
-#		Target/AArch64/TargetInfo/AArch64TargetInfo.cpp
-#		Target/AArch64/Utils/AArch64BaseInfo.cpp
 	files(
+		AArch64A53Fix835769.cpp AArch64A57FPLoadBalancing.cpp
+		AArch64AdvSIMDScalarPass.cpp AArch64AsmPrinter.cpp
+		AArch64BranchTargets.cpp AArch64CallLowering.cpp
+		AArch64CleanupLocalDynamicTLSPass.cpp AArch64CollectLOH.cpp
+		AArch64CompressJumpTables.cpp AArch64CondBrTuning.cpp
+		AArch64ConditionOptimizer.cpp AArch64ConditionalCompares.cpp
+		AArch64DeadRegisterDefinitionsPass.cpp
+		AArch64ExpandPseudoInsts.cpp AArch64FalkorHWPFFix.cpp
+		AArch64FastISel.cpp AArch64FrameLowering.cpp
+		AArch64ISelDAGToDAG.cpp AArch64ISelLowering.cpp
+		AArch64InstrInfo.cpp AArch64InstructionSelector.cpp
+		AArch64LegalizerInfo.cpp AArch64LoadStoreOptimizer.cpp
+		AArch64MCInstLower.cpp AArch64MacroFusion.cpp
+		AArch64PBQPRegAlloc.cpp AArch64PreLegalizerCombiner.cpp
+		AArch64PromoteConstant.cpp AArch64RedundantCopyElimination.cpp
+		AArch64RegisterBankInfo.cpp AArch64RegisterInfo.cpp
+		AArch64SIMDInstrOpt.cpp AArch64SelectionDAGInfo.cpp
+		AArch64SpeculationHardening.cpp AArch64StorePairSuppress.cpp
+		AArch64Subtarget.cpp AArch64TargetMachine.cpp
+		AArch64TargetObjectFile.cpp AArch64TargetTransformInfo.cpp
 	)
+	+ files(AArch64AsmParser.cpp, subdir='AsmParser')
+	+ files(AArch64InstPrinter.cpp, subdir='InstPrinter')
+	+ files(
+		AArch64AsmBackend.cpp AArch64ELFObjectWriter.cpp
+		AArch64ELFStreamer.cpp AArch64MCAsmInfo.cpp
+		AArch64MCCodeEmitter.cpp AArch64MCExpr.cpp
+		AArch64MCTargetDesc.cpp AArch64MachObjectWriter.cpp
+		AArch64TargetStreamer.cpp AArch64WinCOFFObjectWriter.cpp
+		AArch64WinCOFFStreamer.cpp
+		,
+		subdir = 'MCTargetDesc'
+	)
+	+ files(AArch64TargetInfo.cpp, subdir='TargetInfo')
+	+ files(AArch64BaseInfo.cpp, subdir='Utils')
+	+ (if opts.llvm.xdw
+	{
+		files(
+			AArch64Disassembler.cpp
+			AArch64ExternalSymbolizer.cpp
+			,
+			subdir = 'Disassembler'
+		)
+	}
+	else [])
 };

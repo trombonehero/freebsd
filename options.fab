@@ -1,3 +1,6 @@
+# vim: sw=4:ts=4:tw=78
+# $FreeBSD$
+
 bootstrap = record
 {
 	# (defined(TOOLS_PREFIX) && ${MK_LLD_BOOTSTRAP} != "no")
@@ -46,4 +49,16 @@ llvm = record
 	#SRCS_ALL+=	${SRCS_XDW}
 	#.endif
 	xdw = clang.extras or lldb or true;   # || !defined(TOOLS_PREFIX)
+
+	targets = record
+	{
+		aarch64 = true;
+		arm = true;
+		bpf = true;
+		mips = true;
+		powerpc = true;
+		riscv = true;
+		sparc = true;
+		x86 = true;
+	};
 };

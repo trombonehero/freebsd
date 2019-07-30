@@ -1,25 +1,18 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/Instrumentation/AddressSanitizer.cpp
-#		Transforms/Instrumentation/BoundsChecking.cpp
-#		Transforms/Instrumentation/CGProfile.cpp
-#		Transforms/Instrumentation/ControlHeightReduction.cpp
-#		Transforms/Instrumentation/DataFlowSanitizer.cpp
-#		Transforms/Instrumentation/EfficiencySanitizer.cpp
-#		Transforms/Instrumentation/GCOVProfiling.cpp
-#		Transforms/Instrumentation/HWAddressSanitizer.cpp
-#		Transforms/Instrumentation/IndirectCallPromotion.cpp
-#		Transforms/Instrumentation/InstrProfiling.cpp
-#		Transforms/Instrumentation/Instrumentation.cpp
-#		Transforms/Instrumentation/MemorySanitizer.cpp
-#		Transforms/Instrumentation/PGOInstrumentation.cpp
-#		Transforms/Instrumentation/PGOMemOPSizeOpt.cpp
-#		Transforms/Instrumentation/SanitizerCoverage.cpp
-#		Transforms/Instrumentation/ThreadSanitizer.cpp
 	files(
+		AddressSanitizer.cpp BoundsChecking.cpp CGProfile.cpp
+		ControlHeightReduction.cpp DataFlowSanitizer.cpp
+		EfficiencySanitizer.cpp GCOVProfiling.cpp HWAddressSanitizer.cpp
+		IndirectCallPromotion.cpp InstrProfiling.cpp Instrumentation.cpp
+		MemorySanitizer.cpp PGOInstrumentation.cpp PGOMemOPSizeOpt.cpp
+		SanitizerCoverage.cpp ThreadSanitizer.cpp
+		,
+		subdir = 'Instrumentation'
 	)
 };

@@ -1,80 +1,41 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/Scalar/ADCE.cpp
-#		Transforms/Scalar/AlignmentFromAssumptions.cpp
-#		Transforms/Scalar/BDCE.cpp
-#		Transforms/Scalar/CallSiteSplitting.cpp
-#		Transforms/Scalar/ConstantHoisting.cpp
-#		Transforms/Scalar/ConstantProp.cpp
-#		Transforms/Scalar/CorrelatedValuePropagation.cpp
-#		Transforms/Scalar/DCE.cpp
-#		Transforms/Scalar/DeadStoreElimination.cpp
-#		Transforms/Scalar/DivRemPairs.cpp
-#		Transforms/Scalar/EarlyCSE.cpp
-#		Transforms/Scalar/FlattenCFGPass.cpp
-#		Transforms/Scalar/Float2Int.cpp
-#		Transforms/Scalar/GVN.cpp
-#		Transforms/Scalar/GVNHoist.cpp
-#		Transforms/Scalar/GVNSink.cpp
-#		Transforms/Scalar/GuardWidening.cpp
-#		Transforms/Scalar/IVUsersPrinter.cpp
-#		Transforms/Scalar/IndVarSimplify.cpp
-#		Transforms/Scalar/InductiveRangeCheckElimination.cpp
-#SRCS_EXT+=	Transforms/Scalar/InferAddressSpaces.cpp
-#		Transforms/Scalar/InstSimplifyPass.cpp
-#		Transforms/Scalar/JumpThreading.cpp
-#		Transforms/Scalar/LICM.cpp
-#		Transforms/Scalar/LoopAccessAnalysisPrinter.cpp
-#		Transforms/Scalar/LoopDataPrefetch.cpp
-#		Transforms/Scalar/LoopDeletion.cpp
-#		Transforms/Scalar/LoopDistribute.cpp
-#		Transforms/Scalar/LoopIdiomRecognize.cpp
-#		Transforms/Scalar/LoopInstSimplify.cpp
-#		Transforms/Scalar/LoopInterchange.cpp
-#		Transforms/Scalar/LoopLoadElimination.cpp
-#		Transforms/Scalar/LoopPassManager.cpp
-#		Transforms/Scalar/LoopPredication.cpp
-#		Transforms/Scalar/LoopRerollPass.cpp
-#		Transforms/Scalar/LoopRotation.cpp
-#		Transforms/Scalar/LoopSimplifyCFG.cpp
-#		Transforms/Scalar/LoopSink.cpp
-#		Transforms/Scalar/LoopStrengthReduce.cpp
-#		Transforms/Scalar/LoopUnrollPass.cpp
-#		Transforms/Scalar/LoopUnrollAndJamPass.cpp
-#		Transforms/Scalar/LoopUnswitch.cpp
-#		Transforms/Scalar/LoopVersioningLICM.cpp
-#		Transforms/Scalar/LowerAtomic.cpp
-#		Transforms/Scalar/LowerExpectIntrinsic.cpp
-#		Transforms/Scalar/LowerGuardIntrinsic.cpp
-#		Transforms/Scalar/MakeGuardsExplicit.cpp
-#		Transforms/Scalar/MemCpyOptimizer.cpp
-#		Transforms/Scalar/MergeICmps.cpp
-#		Transforms/Scalar/MergedLoadStoreMotion.cpp
-#		Transforms/Scalar/NaryReassociate.cpp
-#		Transforms/Scalar/NewGVN.cpp
-#		Transforms/Scalar/PartiallyInlineLibCalls.cpp
-#		Transforms/Scalar/PlaceSafepoints.cpp
-#		Transforms/Scalar/Reassociate.cpp
-#		Transforms/Scalar/Reg2Mem.cpp
-#		Transforms/Scalar/RewriteStatepointsForGC.cpp
-#		Transforms/Scalar/SCCP.cpp
-#		Transforms/Scalar/SROA.cpp
-#SRCS_EXT+=	Transforms/Scalar/Scalar.cpp
-#		Transforms/Scalar/Scalarizer.cpp
-#		Transforms/Scalar/SeparateConstOffsetFromGEP.cpp
-#		Transforms/Scalar/SimpleLoopUnswitch.cpp
-#		Transforms/Scalar/SimplifyCFGPass.cpp
-#		Transforms/Scalar/Sink.cpp
-#		Transforms/Scalar/SpeculateAroundPHIs.cpp
-#		Transforms/Scalar/SpeculativeExecution.cpp
-#		Transforms/Scalar/StraightLineStrengthReduce.cpp
-#		Transforms/Scalar/StructurizeCFG.cpp
-#		Transforms/Scalar/TailRecursionElimination.cpp
-#		Transforms/Scalar/WarnMissedTransforms.cpp
 	files(
+		ADCE.cpp AlignmentFromAssumptions.cpp BDCE.cpp CallSiteSplitting.cpp
+		ConstantHoisting.cpp ConstantProp.cpp CorrelatedValuePropagation.cpp
+		DCE.cpp DeadStoreElimination.cpp DivRemPairs.cpp EarlyCSE.cpp
+		FlattenCFGPass.cpp Float2Int.cpp GVN.cpp GVNHoist.cpp GVNSink.cpp
+		GuardWidening.cpp IVUsersPrinter.cpp IndVarSimplify.cpp
+		InductiveRangeCheckElimination.cpp InstSimplifyPass.cpp
+		JumpThreading.cpp LICM.cpp LoopAccessAnalysisPrinter.cpp
+		LoopDataPrefetch.cpp LoopDeletion.cpp LoopDistribute.cpp
+		LoopIdiomRecognize.cpp LoopInstSimplify.cpp LoopInterchange.cpp
+		LoopLoadElimination.cpp LoopPassManager.cpp LoopPredication.cpp
+		LoopRerollPass.cpp LoopRotation.cpp LoopSimplifyCFG.cpp LoopSink.cpp
+		LoopStrengthReduce.cpp LoopUnrollPass.cpp LoopUnrollAndJamPass.cpp
+		LoopUnswitch.cpp LoopVersioningLICM.cpp LowerAtomic.cpp
+		LowerExpectIntrinsic.cpp LowerGuardIntrinsic.cpp MakeGuardsExplicit.cpp
+		MemCpyOptimizer.cpp MergeICmps.cpp MergedLoadStoreMotion.cpp
+		NaryReassociate.cpp NewGVN.cpp PartiallyInlineLibCalls.cpp
+		PlaceSafepoints.cpp Reassociate.cpp Reg2Mem.cpp
+		RewriteStatepointsForGC.cpp SCCP.cpp SROA.cpp Scalarizer.cpp
+		SeparateConstOffsetFromGEP.cpp SimpleLoopUnswitch.cpp
+		SimplifyCFGPass.cpp Sink.cpp SpeculateAroundPHIs.cpp
+		SpeculativeExecution.cpp StraightLineStrengthReduce.cpp
+		StructurizeCFG.cpp TailRecursionElimination.cpp
+		WarnMissedTransforms.cpp
+		,
+		subdir = 'Scalar'
 	)
+	+
+	(if opts.llvm.clang.extras
+	{
+		files(InferAddressSpaces.cpp Scalar.cpp, subdir='Scalar')
+	}
+	else [])
 };

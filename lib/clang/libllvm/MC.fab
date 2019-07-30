@@ -1,3 +1,4 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
@@ -8,35 +9,33 @@ sources =
 		ConstantPools.cpp ELFObjectWriter.cpp MCAsmBackend.cpp MCAsmInfo.cpp
 		MCAsmInfoCOFF.cpp MCAsmInfoDarwin.cpp MCAsmInfoELF.cpp MCAsmMacro.cpp
 		MCAsmStreamer.cpp MCAssembler.cpp MCCodeEmitter.cpp MCCodePadder.cpp
-		MCCodeView.cpp MCContext.cpp MCDisassembler/MCRelocationInfo.cpp
-		MCDwarf.cpp MCELFObjectTargetWriter.cpp MCELFStreamer.cpp MCExpr.cpp
-		MCFragment.cpp MCInst.cpp MCInstPrinter.cpp MCInstrAnalysis.cpp
-		MCInstrDesc.cpp MCLinkerOptimizationHint.cpp MCMachOStreamer.cpp
+		MCCodeView.cpp MCContext.cpp MCDwarf.cpp MCELFObjectTargetWriter.cpp
+		MCELFStreamer.cpp MCExpr.cpp MCFragment.cpp MCInst.cpp
+		MCInstPrinter.cpp MCInstrAnalysis.cpp MCInstrDesc.cpp
+		MCLinkerOptimizationHint.cpp MCMachOStreamer.cpp
 		MCMachObjectTargetWriter.cpp MCNullStreamer.cpp MCObjectFileInfo.cpp
 		MCObjectStreamer.cpp MCObjectWriter.cpp MCRegisterInfo.cpp
 		MCSchedule.cpp MCSection.cpp MCSectionCOFF.cpp MCSectionELF.cpp
-		MCSectionMachO.cpp MCSectionWasm.cpp MCStreamer.cpp MCSubtargetInfo.cpp
-		MCSymbol.cpp MCSymbolELF.cpp MCTargetOptions.cpp MCValue.cpp
-		MCWasmStreamer.cpp MCWin64EH.cpp MCWinCOFFStreamer.cpp MCWinEH.cpp
-		MachObjectWriter.cpp StringTableBuilder.cpp SubtargetFeature.cpp
-		WasmObjectWriter.cpp WinCOFFObjectWriter.cpp
+		MCSectionMachO.cpp MCSectionWasm.cpp MCStreamer.cpp
+		MCSubtargetInfo.cpp MCSymbol.cpp MCSymbolELF.cpp MCTargetOptions.cpp
+		MCValue.cpp MCWasmStreamer.cpp MCWin64EH.cpp MCWinCOFFStreamer.cpp
+		MCWinEH.cpp MachObjectWriter.cpp StringTableBuilder.cpp
+		SubtargetFeature.cpp WasmObjectWriter.cpp WinCOFFObjectWriter.cpp
 	)
-	+
-	files(
+	+ files(MCRelocationInfo.cpp, subdir='MCDisassembler')
+	+ files(
 		AsmLexer.cpp AsmParser.cpp COFFAsmParser.cpp DarwinAsmParser.cpp
 		ELFAsmParser.cpp MCAsmLexer.cpp MCAsmParser.cpp
 		MCAsmParserExtension.cpp MCTargetAsmParser.cpp WasmAsmParser.cpp
 		,
 		subdir = 'MCParser'
 	)
-	+
-	(if opts.llvm.xdl
+	+ (if opts.llvm.xdl
 	{
 		files(Disassembler.cpp, subdir = 'MCDisassembler')
 	}
 	else [])
-	+
-	(if opts.llvm.xdw
+	+ (if opts.llvm.xdw
 	{
 		files(
 			MCDisassembler.cpp MCExternalSymbolizer.cpp MCSymbolizer.cpp

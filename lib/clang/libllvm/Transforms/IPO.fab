@@ -1,45 +1,28 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/IPO/AlwaysInliner.cpp
-#		Transforms/IPO/ArgumentPromotion.cpp
-#		Transforms/IPO/BarrierNoopPass.cpp
-#SRCS_EXT+=	Transforms/IPO/BlockExtractor.cpp
-#		Transforms/IPO/CalledValuePropagation.cpp
-#		Transforms/IPO/ConstantMerge.cpp
-#		Transforms/IPO/CrossDSOCFI.cpp
-#		Transforms/IPO/DeadArgumentElimination.cpp
-#		Transforms/IPO/ElimAvailExtern.cpp
-#		Transforms/IPO/ExtractGV.cpp
-#		Transforms/IPO/ForceFunctionAttrs.cpp
-#		Transforms/IPO/FunctionAttrs.cpp
-#		Transforms/IPO/FunctionImport.cpp
-#		Transforms/IPO/GlobalDCE.cpp
-#		Transforms/IPO/GlobalOpt.cpp
-#		Transforms/IPO/GlobalSplit.cpp
-#		Transforms/IPO/HotColdSplitting.cpp
-#		Transforms/IPO/IPConstantPropagation.cpp
-#SRCS_EXT+=	Transforms/IPO/IPO.cpp
-#		Transforms/IPO/InferFunctionAttrs.cpp
-#		Transforms/IPO/InlineSimple.cpp
-#		Transforms/IPO/Inliner.cpp
-#		Transforms/IPO/Internalize.cpp
-#		Transforms/IPO/LoopExtractor.cpp
-#		Transforms/IPO/LowerTypeTests.cpp
-#		Transforms/IPO/MergeFunctions.cpp
-#		Transforms/IPO/PartialInlining.cpp
-#		Transforms/IPO/PassManagerBuilder.cpp
-#		Transforms/IPO/PruneEH.cpp
-#		Transforms/IPO/SCCP.cpp
-#		Transforms/IPO/SampleProfile.cpp
-#		Transforms/IPO/StripDeadPrototypes.cpp
-#		Transforms/IPO/StripSymbols.cpp
-#		Transforms/IPO/SyntheticCountsPropagation.cpp
-#		Transforms/IPO/ThinLTOBitcodeWriter.cpp
-#		Transforms/IPO/WholeProgramDevirt.cpp
 	files(
+		AlwaysInliner.cpp ArgumentPromotion.cpp BarrierNoopPass.cpp
+		CalledValuePropagation.cpp ConstantMerge.cpp CrossDSOCFI.cpp
+		DeadArgumentElimination.cpp ElimAvailExtern.cpp ExtractGV.cpp
+		ForceFunctionAttrs.cpp FunctionAttrs.cpp FunctionImport.cpp
+		GlobalDCE.cpp GlobalOpt.cpp GlobalSplit.cpp HotColdSplitting.cpp
+		IPConstantPropagation.cpp InferFunctionAttrs.cpp InlineSimple.cpp
+		Inliner.cpp Internalize.cpp LoopExtractor.cpp LowerTypeTests.cpp
+		MergeFunctions.cpp PartialInlining.cpp PassManagerBuilder.cpp
+		PruneEH.cpp SCCP.cpp SampleProfile.cpp StripDeadPrototypes.cpp
+		StripSymbols.cpp SyntheticCountsPropagation.cpp
+		ThinLTOBitcodeWriter.cpp WholeProgramDevirt.cpp
+		,
+		subdir = 'IPO'
 	)
+	+
+	(if opts.llvm.clang.extras
+	{
+		files(BlockExtractor.cpp IPO.cpp, subdir='IPO')
+	} else [])
 };

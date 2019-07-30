@@ -1,8 +1,7 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
-	import('Coroutines.fab').sources
-	+
 	{
 		subdir = llvmlibdir :: 'Transforms';
 
@@ -12,3 +11,12 @@ sources =
 			subdir = 'AggressiveInstCombine'
 		)
 	}
+	+ import('Coroutines.fab').sources
+	+ import('IPO.fab').sources
+	+ import('InstCombine.fab').sources
+	+ import('Instrumentation.fab').sources
+	+ import('ObjCARC.fab').sources
+	+ import('Scalar.fab').sources
+	+ import('Utils.fab').sources
+	+ import('Vectorize.fab').sources
+	;

@@ -1,30 +1,33 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'BPF';	# TODO: fix :::
 
-#		Target/BPF/AsmParser/BPFAsmParser.cpp
-#		Target/BPF/BPFAsmPrinter.cpp
-#		Target/BPF/BPFFrameLowering.cpp
-#		Target/BPF/BPFISelDAGToDAG.cpp
-#		Target/BPF/BPFISelLowering.cpp
-#		Target/BPF/BPFInstrInfo.cpp
-#		Target/BPF/BPFMCInstLower.cpp
-#		Target/BPF/BPFMIChecking.cpp
-#		Target/BPF/BPFMIPeephole.cpp
-#		Target/BPF/BPFRegisterInfo.cpp
-#		Target/BPF/BPFSelectionDAGInfo.cpp
-#		Target/BPF/BPFSubtarget.cpp
-#		Target/BPF/BPFTargetMachine.cpp
-#		Target/BPF/BTFDebug.cpp
-#		Target/BPF/Disassembler/BPFDisassembler.cpp
-#		Target/BPF/InstPrinter/BPFInstPrinter.cpp
-#		Target/BPF/MCTargetDesc/BPFAsmBackend.cpp
-#		Target/BPF/MCTargetDesc/BPFELFObjectWriter.cpp
-#		Target/BPF/MCTargetDesc/BPFMCCodeEmitter.cpp
-#		Target/BPF/MCTargetDesc/BPFMCTargetDesc.cpp
-#		Target/BPF/TargetInfo/BPFTargetInfo.cpp
 	files(
+		BPFAsmPrinter.cpp
+		BPFFrameLowering.cpp
+		BPFISelDAGToDAG.cpp
+		BPFISelLowering.cpp
+		BPFInstrInfo.cpp
+		BPFMCInstLower.cpp
+		BPFMIChecking.cpp
+		BPFMIPeephole.cpp
+		BPFRegisterInfo.cpp
+		BPFSelectionDAGInfo.cpp
+		BPFSubtarget.cpp
+		BPFTargetMachine.cpp
+		BTFDebug.cpp
 	)
+	+ files(BPFAsmParser.cpp, subdir='AsmParser')
+	+ files(BPFDisassembler.cpp, subdir='Disassembler')
+	+ files(BPFInstPrinter.cpp, subdir='InstPrinter')
+	+ files(
+		BPFAsmBackend.cpp BPFELFObjectWriter.cpp
+		BPFMCCodeEmitter.cpp BPFMCTargetDesc.cpp
+		,
+		subdir = 'MCTargetDesc'
+	)
+	+ files(BPFTargetInfo.cpp, subdir='TargetInfo')
 };

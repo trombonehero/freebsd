@@ -1,66 +1,30 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/Utils/ASanStackFrameLayout.cpp
-#		Transforms/Utils/AddDiscriminators.cpp
-#		Transforms/Utils/BasicBlockUtils.cpp
-#		Transforms/Utils/BreakCriticalEdges.cpp
-#		Transforms/Utils/BuildLibCalls.cpp
-#		Transforms/Utils/BypassSlowDivision.cpp
-#		Transforms/Utils/CallPromotionUtils.cpp
-#		Transforms/Utils/CanonicalizeAliases.cpp
-#		Transforms/Utils/CloneFunction.cpp
-#		Transforms/Utils/CloneModule.cpp
-#		Transforms/Utils/CodeExtractor.cpp
-#		Transforms/Utils/CtorUtils.cpp
-#		Transforms/Utils/DemoteRegToStack.cpp
-#		Transforms/Utils/EntryExitInstrumenter.cpp
-#		Transforms/Utils/EscapeEnumerator.cpp
-#		Transforms/Utils/Evaluator.cpp
-#		Transforms/Utils/FlattenCFG.cpp
-#		Transforms/Utils/FunctionComparator.cpp
-#		Transforms/Utils/FunctionImportUtils.cpp
-#		Transforms/Utils/GlobalStatus.cpp
-#		Transforms/Utils/GuardUtils.cpp
-#		Transforms/Utils/ImportedFunctionsInliningStatistics.cpp
-#		Transforms/Utils/InlineFunction.cpp
-#		Transforms/Utils/InstructionNamer.cpp
-#		Transforms/Utils/IntegerDivision.cpp
-#		Transforms/Utils/LCSSA.cpp
-#		Transforms/Utils/LibCallsShrinkWrap.cpp
-#		Transforms/Utils/Local.cpp
-#		Transforms/Utils/LoopSimplify.cpp
-#		Transforms/Utils/LoopRotationUtils.cpp
-#		Transforms/Utils/LoopUnroll.cpp
-#		Transforms/Utils/LoopUnrollAndJam.cpp
-#		Transforms/Utils/LoopUnrollPeel.cpp
-#		Transforms/Utils/LoopUnrollRuntime.cpp
-#		Transforms/Utils/LoopUtils.cpp
-#		Transforms/Utils/LoopVersioning.cpp
-#		Transforms/Utils/LowerInvoke.cpp
-#		Transforms/Utils/LowerSwitch.cpp
-#		Transforms/Utils/Mem2Reg.cpp
-#		Transforms/Utils/MetaRenamer.cpp
-#		Transforms/Utils/ModuleUtils.cpp
-#		Transforms/Utils/NameAnonGlobals.cpp
-#		Transforms/Utils/PredicateInfo.cpp
-#		Transforms/Utils/PromoteMemoryToRegister.cpp
-#		Transforms/Utils/SSAUpdater.cpp
-#		Transforms/Utils/SanitizerStats.cpp
-#		Transforms/Utils/SimplifyCFG.cpp
-#		Transforms/Utils/SimplifyIndVar.cpp
-#		Transforms/Utils/SimplifyLibCalls.cpp
-#		Transforms/Utils/SplitModule.cpp
-#		Transforms/Utils/StripGCRelocates.cpp
-#		Transforms/Utils/StripNonLineTableDebugInfo.cpp
-#		Transforms/Utils/SymbolRewriter.cpp
-#		Transforms/Utils/UnifyFunctionExitNodes.cpp
-#SRCS_EXT+=	Transforms/Utils/Utils.cpp
-#		Transforms/Utils/VNCoercion.cpp
-#		Transforms/Utils/ValueMapper.cpp
 	files(
+		ASanStackFrameLayout.cpp AddDiscriminators.cpp BasicBlockUtils.cpp
+		BreakCriticalEdges.cpp BuildLibCalls.cpp BypassSlowDivision.cpp
+		CallPromotionUtils.cpp CanonicalizeAliases.cpp CloneFunction.cpp
+		CloneModule.cpp CodeExtractor.cpp CtorUtils.cpp DemoteRegToStack.cpp
+		EntryExitInstrumenter.cpp EscapeEnumerator.cpp Evaluator.cpp
+		FlattenCFG.cpp FunctionComparator.cpp FunctionImportUtils.cpp
+		GlobalStatus.cpp GuardUtils.cpp ImportedFunctionsInliningStatistics.cpp
+		InlineFunction.cpp InstructionNamer.cpp IntegerDivision.cpp LCSSA.cpp
+		LibCallsShrinkWrap.cpp Local.cpp LoopSimplify.cpp LoopRotationUtils.cpp
+		LoopUnroll.cpp LoopUnrollAndJam.cpp LoopUnrollPeel.cpp
+		LoopUnrollRuntime.cpp LoopUtils.cpp LoopVersioning.cpp LowerInvoke.cpp
+		LowerSwitch.cpp Mem2Reg.cpp MetaRenamer.cpp ModuleUtils.cpp
+		NameAnonGlobals.cpp PredicateInfo.cpp PromoteMemoryToRegister.cpp
+		SSAUpdater.cpp SanitizerStats.cpp SimplifyCFG.cpp SimplifyIndVar.cpp
+		SimplifyLibCalls.cpp SplitModule.cpp StripGCRelocates.cpp
+		StripNonLineTableDebugInfo.cpp SymbolRewriter.cpp
+		UnifyFunctionExitNodes.cpp VNCoercion.cpp ValueMapper.cpp
+		,
+		subdir = 'Utils'
 	)
+	+ (if opts.llvm.clang.extras files(Utils.cpp, subdir='Utils') else [])
 };

@@ -1,18 +1,16 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = llvmlibdir :: 'Transforms';
 
-#		Transforms/ObjCARC/DependencyAnalysis.cpp
-#SRCS_EXT+=	Transforms/ObjCARC/ObjCARC.cpp
-#		Transforms/ObjCARC/ObjCARCAPElim.cpp
-#		Transforms/ObjCARC/ObjCARCContract.cpp
-#		Transforms/ObjCARC/ObjCARCExpand.cpp
-#		Transforms/ObjCARC/ObjCARCOpts.cpp
-#		Transforms/ObjCARC/ProvenanceAnalysis.cpp
-#		Transforms/ObjCARC/ProvenanceAnalysisEvaluator.cpp
-#		Transforms/ObjCARC/PtrState.cpp
 	files(
+		DependencyAnalysis.cpp ObjCARCAPElim.cpp ObjCARCContract.cpp
+		ObjCARCExpand.cpp ObjCARCOpts.cpp ProvenanceAnalysis.cpp
+		ProvenanceAnalysisEvaluator.cpp PtrState.cpp
+		,
+		subdir = 'ObjCARC'
 	)
+	+ (if opts.llvm.clang.extras files(ObjCARC.cpp, subdir='ObjCARC') else [])
 };

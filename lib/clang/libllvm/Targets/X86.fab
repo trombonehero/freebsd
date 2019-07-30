@@ -1,75 +1,57 @@
+# vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
 sources =
 {
-	subdir = llvmlibdir :: '';
+	subdir = (llvmlibdir :: 'Target') :: 'X86';	# TODO: fix :::
 
-#		Target/X86/AsmParser/X86AsmInstrumentation.cpp
-#		Target/X86/AsmParser/X86AsmParser.cpp
-#SRCS_XDW+=	Target/X86/Disassembler/X86Disassembler.cpp
-#SRCS_XDW+=	Target/X86/Disassembler/X86DisassemblerDecoder.cpp
-#		Target/X86/InstPrinter/X86ATTInstPrinter.cpp
-#		Target/X86/InstPrinter/X86InstComments.cpp
-#		Target/X86/InstPrinter/X86InstPrinterCommon.cpp
-#		Target/X86/InstPrinter/X86IntelInstPrinter.cpp
-#		Target/X86/MCTargetDesc/X86AsmBackend.cpp
-#		Target/X86/MCTargetDesc/X86ELFObjectWriter.cpp
-#		Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-#		Target/X86/MCTargetDesc/X86MCCodeEmitter.cpp
-#		Target/X86/MCTargetDesc/X86MCTargetDesc.cpp
-#		Target/X86/MCTargetDesc/X86MachObjectWriter.cpp
-#		Target/X86/MCTargetDesc/X86WinCOFFObjectWriter.cpp
-#		Target/X86/MCTargetDesc/X86WinCOFFStreamer.cpp
-#		Target/X86/MCTargetDesc/X86WinCOFFTargetStreamer.cpp
-#		Target/X86/TargetInfo/X86TargetInfo.cpp
-#		Target/X86/Utils/X86ShuffleDecode.cpp
-#		Target/X86/ShadowCallStack.cpp
-#		Target/X86/X86AsmPrinter.cpp
-#		Target/X86/X86AvoidStoreForwardingBlocks.cpp
-#		Target/X86/X86CallFrameOptimization.cpp
-#		Target/X86/X86CallLowering.cpp
-#		Target/X86/X86CallingConv.cpp
-#		Target/X86/X86CmovConversion.cpp
-#		Target/X86/X86CondBrFolding.cpp
-#		Target/X86/X86DiscriminateMemOps.cpp
-#		Target/X86/X86DomainReassignment.cpp
-#		Target/X86/X86EvexToVex.cpp
-#		Target/X86/X86ExpandPseudo.cpp
-#		Target/X86/X86FastISel.cpp
-#		Target/X86/X86FixupBWInsts.cpp
-#		Target/X86/X86FixupLEAs.cpp
-#		Target/X86/X86FixupSetCC.cpp
-#		Target/X86/X86FlagsCopyLowering.cpp
-#		Target/X86/X86FloatingPoint.cpp
-#		Target/X86/X86FrameLowering.cpp
-#		Target/X86/X86ISelDAGToDAG.cpp
-#		Target/X86/X86ISelLowering.cpp
-#		Target/X86/X86IndirectBranchTracking.cpp
-#		Target/X86/X86InsertPrefetch.cpp
-#		Target/X86/X86InstrFMA3Info.cpp
-#		Target/X86/X86InstrFoldTables.cpp
-#		Target/X86/X86InstrInfo.cpp
-#		Target/X86/X86InstructionSelector.cpp
-#		Target/X86/X86InterleavedAccess.cpp
-#		Target/X86/X86LegalizerInfo.cpp
-#		Target/X86/X86MCInstLower.cpp
-#		Target/X86/X86MachineFunctionInfo.cpp
-#		Target/X86/X86MacroFusion.cpp
-#		Target/X86/X86OptimizeLEAs.cpp
-#		Target/X86/X86PadShortFunction.cpp
-#		Target/X86/X86RegisterBankInfo.cpp
-#		Target/X86/X86RegisterInfo.cpp
-#		Target/X86/X86RetpolineThunks.cpp
-#		Target/X86/X86SelectionDAGInfo.cpp
-#		Target/X86/X86ShuffleDecodeConstantPool.cpp
-#		Target/X86/X86SpeculativeLoadHardening.cpp
-#		Target/X86/X86Subtarget.cpp
-#		Target/X86/X86TargetMachine.cpp
-#		Target/X86/X86TargetObjectFile.cpp
-#		Target/X86/X86TargetTransformInfo.cpp
-#		Target/X86/X86VZeroUpper.cpp
-#		Target/X86/X86WinAllocaExpander.cpp
-#		Target/X86/X86WinEHState.cpp
 	files(
+		ShadowCallStack.cpp X86AsmPrinter.cpp
+		X86AvoidStoreForwardingBlocks.cpp X86CallFrameOptimization.cpp
+		X86CallLowering.cpp X86CallingConv.cpp X86CmovConversion.cpp
+		X86CondBrFolding.cpp X86DiscriminateMemOps.cpp
+		X86DomainReassignment.cpp X86EvexToVex.cpp X86ExpandPseudo.cpp
+		X86FastISel.cpp X86FixupBWInsts.cpp X86FixupLEAs.cpp X86FixupSetCC.cpp
+		X86FlagsCopyLowering.cpp X86FloatingPoint.cpp X86FrameLowering.cpp
+		X86ISelDAGToDAG.cpp X86ISelLowering.cpp X86IndirectBranchTracking.cpp
+		X86InsertPrefetch.cpp X86InstrFMA3Info.cpp X86InstrFoldTables.cpp
+		X86InstrInfo.cpp X86InstructionSelector.cpp X86InterleavedAccess.cpp
+		X86LegalizerInfo.cpp X86MCInstLower.cpp X86MachineFunctionInfo.cpp
+		X86MacroFusion.cpp X86OptimizeLEAs.cpp X86PadShortFunction.cpp
+		X86RegisterBankInfo.cpp X86RegisterInfo.cpp X86RetpolineThunks.cpp
+		X86SelectionDAGInfo.cpp X86ShuffleDecodeConstantPool.cpp
+		X86SpeculativeLoadHardening.cpp X86Subtarget.cpp X86TargetMachine.cpp
+		X86TargetObjectFile.cpp X86TargetTransformInfo.cpp X86VZeroUpper.cpp
+		X86WinAllocaExpander.cpp X86WinEHState.cpp
 	)
+	+ files(
+		X86AsmInstrumentation.cpp X86AsmParser.cpp
+		,
+		subdir='AsmParser'
+	)
+	+ files(
+		X86ATTInstPrinter.cpp X86InstComments.cpp
+		X86InstPrinterCommon.cpp X86IntelInstPrinter.cpp
+		,
+		subdir='InstPrinter'
+	)
+	+ files(
+		X86AsmBackend.cpp X86ELFObjectWriter.cpp X86MCAsmInfo.cpp
+		X86MCCodeEmitter.cpp X86MCTargetDesc.cpp X86MachObjectWriter.cpp
+		X86WinCOFFObjectWriter.cpp X86WinCOFFStreamer.cpp
+		X86WinCOFFTargetStreamer.cpp
+		,
+		subdir='MCTargetDesc'
+	)
+	+ files(X86TargetInfo.cpp, subdir='TargetInfo')
+	+ files(X86ShuffleDecode.cpp, subdir='Utils')
+	+ (if opts.llvm.xdw
+	{
+		files(
+			X86Disassembler.cpp X86DisassemblerDecoder.cpp
+			,
+			subdir='Disassembler'
+		)
+	}
+	else [])
 };

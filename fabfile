@@ -41,7 +41,17 @@ options = import('options.fab');
 #
 # Import C and shell toolchains.
 #
-toolchain = import('share/fab/toolchain');
+# Once issue fabriquer/fabrique#45 is resolved, we will be able to pull the
+# default toolchain path from an environment variable. For now, however,
+# require a path to be passed in explicitly.
+#
+path:list[file] = args.path ? print("Missing '-D path=files(...)' argument");
+print('Toolchain path:');
+print(path);
+print('');
+
+toolchain_which = import('which', path=path).executable;
+toolchain = import('share/fab/toolchain', which=toolchain_which);
 
 #
 # Set up staging area for final build products.

@@ -2,7 +2,7 @@
 #
 # This may be provided by the `which` plugin when we're using the build system's
 # toolchain, but sometimes we need to use a different (built) toolchain.
-which:(string)->file = args.which ? import('which').executable;
+which:(string)->file = args.which;
 
 #
 # Configure the host and target platforms.

@@ -119,15 +119,24 @@ sources =
 	+ import('Option.fab').sources
 	+ import('ProfileData.fab').sources
 	+ import('TableGen.fab').sources
-#	+
-#	{
-#		subdir = llvmlibdir :: 'ToolDrivers';
-#		optsdir = (gendir :: 'llvm') :: 'llvm-dlltool';   # TODO: fix `:::`
-#
-#		file('DlltoolDriver.cpp', includes=[optsdir], subdir=subdir::'llvm-dlltool')
-#		::
-#		if opts.exl files(LibDriver.cpp, subdir='llvm-lib') else []
-#	}
+	+
+	{
+		subdir = llvmlibdir :: 'ToolDrivers';
+
+		file('DlltoolDriver.cpp',
+			includes=[(gendir::'llvm')::'llvm-dlltool'],  # TODO: fix `:::`
+			subdir=subdir::'llvm-dlltool')
+		::
+		(if opts.llvm.exl
+		{
+			file('LibDriver.cpp',
+				includes=[(gendir::'llvm')::'llvm-lib'],  # TODO: fix `:::`
+				subdir=subdir::'llvm-lib')
+		}
+		else [])
+		::
+		files()
+	}
 	+ import('Targets').sources
 	+ import('Transforms').sources
 	+ import('Support.fab').sources

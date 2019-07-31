@@ -30,7 +30,7 @@ print(host);
 print('');
 
 print('Target platform:');
-print(host);
+print(record { osname=target.osname; architecture=target.architecture; });
 print('');
 
 #

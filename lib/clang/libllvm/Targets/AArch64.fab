@@ -1,9 +1,30 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+rules = target_tblgen_rules('AArch64');
+
+generated_headers =
+[
+	rules.asmMatcher()
+	rules.asmWriter()
+	rules.asmWriter1()
+	rules.callingConv()
+	rules.disassembler()
+	rules.instrInfo()
+	rules.isel.dag()
+	rules.isel.fast()
+	rules.isel.global()
+	rules.mc.emitter()
+	rules.mc.pseudoLowering()
+	rules.reg.bank()
+	rules.reg.info()
+	rules.subtarget()
+	rules.system.operands()
+];
+
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'AArch64';		# TODO: fix :::
+	subdir = target_dir :: 'AArch64';
 
 	files(
 		AArch64A53Fix835769.cpp AArch64A57FPLoadBalancing.cpp

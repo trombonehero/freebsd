@@ -47,15 +47,19 @@ TargetTblGenRules = type record
 # For example, a target that only generates ASM-related includes could say:
 #
 # ```
-# rules = target_tblgen_rules('MyTargetName');
+# rules = target_tblgen_rules('MyTargetName', 'MyTargetTblgenBaseName');
 # generated_headers = [ rules.asmMatcher() rules.asmWriter() ];
 # ```
 #
-target_tblgen_rules = function(arch:string): TargetTblGenRules
+# @param   arch      the architecture name
+# @param   name      the base of the tblgen file's name (always the same as
+#                    arch except for PowerPC, where arch=PowerPC and name=PPC)
+#
+target_tblgen_rules = function(arch:string, name:string): TargetTblGenRules
 {
 	# LLVM targets are built in well-defined locations with well-defined names
 	archdir = target_dir :: arch;
-	tblgen_src = { subdir = archdir; file(arch + '.td') }; # TODO: Issue #51
+	tblgen_src = { subdir = archdir; file(name + '.td') }; # TODO: Issue #51
 
 	# Find a generated output file (e.g., AArch64GenAsmMatcher.inc)
 	outfile = function(name:string): file

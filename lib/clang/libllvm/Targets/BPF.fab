@@ -1,6 +1,18 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+#.if ${MK_LLVM_TARGET_BPF} != "no"
+#TGHDRS+=	BPFGenAsmMatcher.inc
+#TGHDRS+=	BPFGenAsmWriter.inc
+#TGHDRS+=	BPFGenCallingConv.inc
+#TGHDRS+=	BPFGenDAGISel.inc
+#TGHDRS+=	BPFGenDisassemblerTables.inc
+#TGHDRS+=	BPFGenInstrInfo.inc
+#TGHDRS+=	BPFGenMCCodeEmitter.inc
+#TGHDRS+=	BPFGenRegisterInfo.inc
+#TGHDRS+=	BPFGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_BPF
+
 sources =
 {
 	subdir = (llvmlibdir :: 'Target') :: 'BPF';	# TODO: fix :::

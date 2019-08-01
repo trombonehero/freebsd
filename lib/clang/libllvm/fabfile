@@ -143,29 +143,3 @@ sources =
 	+ import('Support.fab').sources
 	+ import('XRay.fab').sources
 	;
-
-
-#.include <src.opts.mk>
-#.include "../llvm.pre.mk"
-#
-#LIB=		llvm
-#INTERNALLIB=
-#
-#CFLAGS+=	-I${.OBJDIR}
-#
-#.if ${MK_LLVM_TARGET_AARCH64} == "no" && ${MK_LLVM_TARGET_ARM} == "no" && \
-#    ${MK_LLVM_TARGET_BPF} == "no" && ${MK_LLVM_TARGET_MIPS} == "no" && \
-#    ${MK_LLVM_TARGET_POWERPC} == "no" && ${MK_LLVM_TARGET_RISCV} == "no" && \
-#    ${MK_LLVM_TARGET_SPARC} == "no" && ${MK_LLVM_TARGET_X86} == "no"
-#.error Please enable at least one of: MK_LLVM_TARGET_AARCH64,\
-# MK_LLVM_TARGET_ARM, MK_LLVM_TARGET_BPF, MK_LLVM_TARGET_MIPS, \
-# MK_LLVM_TARGET_POWERPC, MK_LLVM_TARGET_RISCV, MK_LLVM_TARGET_SPARC, \
-# or MK_LLVM_TARGET_X86
-#.endif
-#
-#.for arch in AArch64 ARM BPF Mips PowerPC RISCV Sparc X86
-#. if ${MK_LLVM_TARGET_${arch:tu}} != "no"
-#CFLAGS+=	-I${LLVM_SRCS}/lib/Target/${arch}
-#. endif
-#.endfor
-

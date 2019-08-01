@@ -1,6 +1,22 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+#.if ${MK_LLVM_TARGET_RISCV} != "no"
+#TGHDRS+=	RISCVGenAsmMatcher.inc
+#TGHDRS+=	RISCVGenAsmWriter.inc
+#TGHDRS+=	RISCVGenCallingConv.inc
+#TGHDRS+=	RISCVGenCompressInstEmitter.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenDisassemblerTables.inc
+#TGHDRS+=	RISCVGenDAGISel.inc
+#TGHDRS+=	RISCVGenInstrInfo.inc
+#TGHDRS+=	RISCVGenMCCodeEmitter.inc
+#TGHDRS+=	RISCVGenMCPseudoLowering.inc
+#TGHDRS+=	RISCVGenRegisterInfo.inc
+#TGHDRS+=	RISCVGenSubtargetInfo.inc
+#TGHDRS+=	RISCVGenSystemOperands.inc
+#.endif # MK_LLVM_TARGET_RISCV
+
 sources =
 {
 	subdir = (llvmlibdir :: 'Target') :: 'RISCV';

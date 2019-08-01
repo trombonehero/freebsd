@@ -1,6 +1,19 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+#.if ${MK_LLVM_TARGET_POWERPC} != "no"
+#TGHDRS+=	PPCGenAsmMatcher.inc
+#TGHDRS+=	PPCGenAsmWriter.inc
+#TGHDRS+=	PPCGenCallingConv.inc
+#TGHDRS+=	PPCGenDAGISel.inc
+#TGHDRS+=	PPCGenDisassemblerTables.inc
+#TGHDRS+=	PPCGenFastISel.inc
+#TGHDRS+=	PPCGenInstrInfo.inc
+#TGHDRS+=	PPCGenMCCodeEmitter.inc
+#TGHDRS+=	PPCGenRegisterInfo.inc
+#TGHDRS+=	PPCGenSubtargetInfo.inc
+#.endif # MK_LLVM_TARGET_POWERPC
+
 sources =
 {
 	subdir = (llvmlibdir :: 'Target') :: 'PowerPC';	# TODO: fix :::

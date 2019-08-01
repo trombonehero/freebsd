@@ -1,6 +1,23 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+#.if ${MK_LLVM_TARGET_ARM} != "no"
+#TGHDRS+=	ARMGenAsmMatcher.inc
+#TGHDRS+=	ARMGenAsmWriter.inc
+#TGHDRS+=	ARMGenCallingConv.inc
+#TGHDRS+=	ARMGenDAGISel.inc
+#TGHDRS+=	ARMGenDisassemblerTables.inc
+#TGHDRS+=	ARMGenFastISel.inc
+#TGHDRS+=	ARMGenGlobalISel.inc
+#TGHDRS+=	ARMGenInstrInfo.inc
+#TGHDRS+=	ARMGenMCCodeEmitter.inc
+#TGHDRS+=	ARMGenMCPseudoLowering.inc
+#TGHDRS+=	ARMGenRegisterBank.inc
+#TGHDRS+=	ARMGenRegisterInfo.inc
+#TGHDRS+=	ARMGenSubtargetInfo.inc
+#TGHDRS+=	ARMGenSystemRegister.inc
+#.endif # MK_LLVM_TARGET_ARM
+
 sources =
 {
 	subdir = llvmlibdir :: 'Target';

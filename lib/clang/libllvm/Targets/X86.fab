@@ -21,7 +21,7 @@ generated_headers =
 
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'X86';	# TODO: fix :::
+	subdir = target_dir :: 'X86';
 
 	files(
 		ShadowCallStack.cpp X86AsmPrinter.cpp

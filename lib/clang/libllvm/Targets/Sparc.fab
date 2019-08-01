@@ -17,7 +17,7 @@ generated_headers =
 
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'Sparc';	# TODO: fix :::
+	subdir = target_dir :: 'Sparc';
 
 	files(
 		DelaySlotFiller.cpp LeonPasses.cpp SparcAsmPrinter.cpp

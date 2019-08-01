@@ -21,7 +21,7 @@ generated_headers =
 
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'Mips';	# TODO: fix :::
+	subdir = target_dir :: 'Mips';
 
 	files(
 		MicroMipsSizeReduction.cpp Mips16FrameLowering.cpp

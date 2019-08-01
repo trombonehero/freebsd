@@ -18,7 +18,7 @@ generated_headers =
 
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'PowerPC';	# TODO: fix :::
+	subdir = target_dir :: 'PowerPC';
 
 	files(
 		PPCAsmPrinter.cpp PPCBoolRetToInt.cpp PPCBranchCoalescing.cpp

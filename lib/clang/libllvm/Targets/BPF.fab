@@ -18,7 +18,7 @@ generated_headers =
 
 sources =
 {
-	subdir = (llvmlibdir :: 'Target') :: 'BPF';	# TODO: fix :::
+	subdir = target_dir :: 'BPF';
 
 	files(
 		BPFAsmPrinter.cpp

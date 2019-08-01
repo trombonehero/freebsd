@@ -76,7 +76,7 @@ generated_headers = foreach i <- tblgen_files
 	source = file(i.source + '.td', subdir=i.dir);
 	target = file(i.target + '.inc', subdir=gendir::'llvm');
 
-	tblgen(source, target, i.gen_action)
+	llvm_tblgen(source, target, i.gen_action)
 };
 
 sources =

@@ -1,0 +1,114 @@
+# vim: sw=4:ts=4:tw=78
+# $FreeBSD$
+
+#
+# We expect to be passed a build directory and an LLVM include directory.
+#
+include_dir:file = args.llvm_include;
+output_dir:file = args.output_dir;
+
+# Provide an explicit representation of the type that's used to represent
+# all possible llvm-tblgen rules (not all of which are used by every target)
+TargetTblGenRules = type record
+[
+	generated_include_dir:file,
+
+	asmMatcher:()->file,
+	asmWriter:()->file,
+	asmWriter1:()->file,
+	callingConv:()->file,
+	codeEmitter:()->file,
+	compressedInstEmitter:()->file,
+	disassembler:()->file,
+	evex2vex:()->file,
+	instrInfo:()->file,
+	isel:record[],
+	mc:record[emitter:()->file, pseudoLowering:()->file],
+	reg:record[bank:()->file, info:()->file],
+	subtarget:()->file,
+	system:record[operands:()->file, register:()->file],
+];
+
+#
+# Create a record that can generate standard target include files using
+# LLVM tblgen.
+#
+# There is a well-defined set of names that can be used by targets, but not
+# every target uses every name. This function returns a data structure that
+# can generate target includes when its methods (closures) are invoked.
+# For example, a target that only generates ASM-related includes could say:
+#
+# ```
+# rules = tblgen.rules('MyTargetName', 'MyTargetTblgenBaseName');
+# generated_headers = [ rules.asmMatcher() rules.asmWriter() ];
+# ```
+#
+# @param   arch      the architecture name
+# @param   name      the base of the tblgen file's name (always the same as
+#                    arch except for PowerPC, where arch=PowerPC and name=PPC)
+#
+rules = function(arch:string, name:string): TargetTblGenRules
+{
+	# LLVM targets are built in well-defined locations with well-defined names
+	archdir = output_dir :: arch;
+	include_dirs = [include_dir archdir];
+	tblgen_src = { subdir = archdir; file(name + '.td') }; # TODO: Issue #51
+
+	# Find a generated output file (e.g., AArch64GenAsmMatcher.inc)
+	outfile = function(name:string): file
+	{
+		file(arch + 'Gen' + name + '.inc')
+	};
+
+	# Create a function that, if invoked, will generate a specific
+	# tblgen rule (e.g., "build AsmMatcher")
+	builder = function(target:string, gen_action:string): ()->file
+	{
+		function(): file
+		{
+			toolchain.tblgen.llvm(source=tblgen_src,
+			                      output=outfile(target),
+			                      flags=['-gen-' + gen_action],
+			                      includes=include_dirs)
+		}
+	};
+
+	record
+	{
+		# The directory that generated files will end up in
+		generated_include_dir:file = archdir;
+
+		asmMatcher = builder('AsmMatcher', 'asm-matcher');
+		asmWriter = builder('AsmWriter', 'asm-writer');
+		asmWriter1 = builder('AsmWriter1', 'asm-writer -asmwriternum=1');
+		callingConv = builder('CallingConv', 'callingconv');
+		codeEmitter = builder('CodeEmitter', 'emitter');
+		compressedInstEmitter =
+			builder('CompressInstEmitted', 'compress-inst-emitter');
+		disassembler = builder('DisassemblerTables', 'disassembler');
+		evex2vex = builder('EVEX2VEXTables', 'x86-EVEX2VEX-tables');
+		instrInfo = builder('InstrInfo', 'instr-info');
+		isel = record
+		{
+			dag = builder('DAGISel', 'dag-isel');
+			fast = builder('FastISel', 'fast-isel');
+			global = builder('GlobalISel', 'global-isel');
+		};
+		mc = record
+		{
+			emitter = builder('MCCodeEmitter', 'emitter');
+			pseudoLowering = builder('MCPseudoLowering', 'pseudo-lowering');
+		};
+		reg = record
+		{
+			bank = builder('RegisterBank', 'register-bank');
+			info = builder('RegisterInfo', 'register-info');
+		};
+		subtarget = builder('SubtargetInfo', 'subtarget');
+		system = record
+		{
+			operands = builder('SystemOperands', 'searchable-tables');
+			register = builder('SystemRegister', 'searchable-tables');
+		};
+	}
+};

@@ -1,7 +1,7 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-rules = target_tblgen_rules('BPF', 'BPF');
+rules = tblgen.rules('BPF', 'BPF');
 
 generated_headers =
 [

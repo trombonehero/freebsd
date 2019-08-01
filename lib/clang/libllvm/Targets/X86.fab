@@ -1,7 +1,7 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-rules = target_tblgen_rules('X86', 'X86');
+rules = tblgen.rules('X86', 'X86');
 generated_headers =
 [
 	rules.asmMatcher()

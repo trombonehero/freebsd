@@ -1,7 +1,7 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-rules = target_tblgen_rules('Mips', 'Mips');
+rules = tblgen.rules('Mips', 'Mips');
 generated_headers =
 [
 	rules.asmMatcher()

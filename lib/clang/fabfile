@@ -66,16 +66,6 @@ llvm_options:toolchain.c.compiler_options = record
 	warnings = ['all'];
 };
 
-llvm_tblgen = function(source:file, output:file, gen_action:string,
-                  extra_include_dirs:list[file]=[]): file
-{
-	include_dirs = (llvmroot :: 'include') :: extra_include_dirs;
-	flags = gen_action :: (foreach d <- include_dirs '-I' + d.fullname );
-
-	toolchain.tblgen.llvm(source, output, flags)
-};
-
-
 llvm = import('libllvm', options=options);
 
 srcs = llvm.sources;

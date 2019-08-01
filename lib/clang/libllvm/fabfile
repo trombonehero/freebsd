@@ -7,7 +7,7 @@ TblGen = type record[
 	dir:file,
 	source:string,
 	target:string,
-	gen_action:string
+	flags:list[string],
 ];
 
 common_tblgen_files:list[TblGen] =
@@ -17,7 +17,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvminclude :: 'IR';
 		source = 'Attributes';
 		target = 'IR/Attributes';
-		gen_action = '-gen-attrs';
+		flags = ['-gen-attrs'];
 	}
 
 	record
@@ -25,7 +25,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvmlibdir :: 'IR';
 		source = 'AttributesCompatFunc';
 		target = 'IR/AttributesCompatFunc';
-		gen_action = '-gen-attrs';
+		flags = ['-gen-attrs'];
 	}
 
 	record
@@ -33,7 +33,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvminclude :: 'IR';
 		source = 'Intrinsics';
 		target = 'IR/IntrinsicEnums';
-		gen_action = '-gen-intrinsic-enums';
+		flags = ['-gen-intrinsic-enums'];
 	}
 
 	record
@@ -41,7 +41,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvminclude :: 'IR';
 		source = 'Intrinsics';
 		target = 'IR/IntrinsicImpl';
-		gen_action = '-gen-intrinsic-impl';
+		flags = ['-gen-intrinsic-impl'];
 	}
 
 	record
@@ -49,7 +49,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvmlibdir :: 'Transforms/InstCombine';
 		source = 'InstCombineTables';
 		target = 'InstCombineTables';
-		gen_action = '-gen-searchable-tables';
+		flags = ['-gen-searchable-tables'];
 	}
 
 	record
@@ -57,7 +57,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvmlibdir :: 'ToolDrivers/llvm-lib';
 		source = 'Options';
 		target = 'llvm-lib/Options';
-		gen_action = '-gen-opt-parser-defs';
+		flags = ['-gen-opt-parser-defs'];
 	}
 
 	record
@@ -65,7 +65,7 @@ common_tblgen_files:list[TblGen] =
 		dir = llvmlibdir :: 'ToolDrivers/llvm-dlltool';
 		source = 'Options';
 		target = 'llvm-dlltool/Options';
-		gen_action = '-gen-opt-parser-defs';
+		flags = ['-gen-opt-parser-defs'];
 	}
 ];
 
@@ -76,7 +76,7 @@ generated_headers = foreach i <- tblgen_files
 	source = file(i.source + '.td', subdir=i.dir);
 	target = file(i.target + '.inc', subdir=gendir::'llvm');
 
-	llvm_tblgen(source, target, i.gen_action)
+	toolchain.tblgen.llvm(source, target, i.flags, [llvmroot::'include'])
 };
 
 sources =

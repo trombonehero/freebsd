@@ -5,21 +5,31 @@ llvm_tblgen:file = args.llvm_tblgen;
 
 tblgen = record
 {
-	generic = action('${tblgen} ${flags} -o ${output} ${source}'
+	raw = action('${tblgen} ${flags} -o ${output} ${source}'
 		<- source:file[in], output:file[out], flags:list[string],
 		   tblgen:file[in]);
+
+	generic = function(tool:file[in], source:file[in], output:file[out],
+	                   flags:list[string], includes:list[file]=[]): file
+	{
+		all_flags = flags
+			+ (foreach d <- includes '-I' + d.fullname )
+			;
+
+		raw(source, output, all_flags, tool)
+	};
 
 	# TODO: bind(generic, _, _, _, clang_tblgen) once Fabrique supports it
 
 	clang = function(source:file[in], output:file[out],
-	                 flags:list[string]): file
+	                 flags:list[string], includes:list[file]=[]): file
 	{
-		generic(source, output, flags, clang_tblgen)
+		generic(clang_tblgen, source, output, flags, includes)
 	};
 
 	llvm = function(source:file[in], output:file[out],
-	                flags:list[string]): file
+	                flags:list[string], includes:list[file]=[]): file
 	{
-		generic(source, output, flags, llvm_tblgen)
+		generic(llvm_tblgen, source, output, flags, includes)
 	};
 };

@@ -3,28 +3,8 @@
 #
 
 
-#
-# A GCC-like compiler toolchain must have both a C and a C++ compiler.
-#
-Compilers = type record[cc:file, cxx:file];
-
-
-#
-# Options represent compiler flags in a more structured way.
-#
-Options = type record
-[
-	debug:bool,
-	definitions:list[string],
-	cflags:list[string],
-	cxxflags:list[string],
-	include_dirs:list[file],
-	optlevel:int,
-	pic:bool,
-	sanitizer:string,
-	system_include_dirs:list[file],
-	warnings:list[string]
-];
+toolchain = import('toolchain.fab');
+Options = toolchain.Options;
 
 default_compile_options:Options = record
 {
@@ -39,6 +19,7 @@ default_compile_options:Options = record
 	system_include_dirs = files(/usr/include);
 	warnings = [];
 };
+
 
 compile_flags = function(opts:Options, cxx:bool=false,
                          extra_header_dirs:list[file]=[]): list[string]
@@ -64,7 +45,7 @@ compile_flags = function(opts:Options, cxx:bool=false,
 	(foreach define <- opts.definitions '-D' + define)
 };
 
-binary_flags = function(opts:Options, dynamic:bool=false): list[string]
+binary_flags = function(opts:Options, cxx:bool, dynamic:bool=false): list[string]
 {
 	(if opts.debug ['-g'] else [])
 	+
@@ -89,7 +70,7 @@ platform = import('platform');
 #
 # Compile some number of source files into their corresponding object files.
 #
-compile = function(compilers:Compilers,
+compile = function(compilers:toolchain.Compilers,
                    srcs:list[file],
                    options:Options,
                    extra_flags:list[string]=[],
@@ -112,6 +93,19 @@ compile = function(compilers:Compilers,
 		compile_one(compiler, src, obj, flags, dependencies);
 		obj
 	}
+};
+
+
+#
+# Link objects into an executable binary.
+#
+binary = function(compiler:file, objects:list[file[in]], binary:file[out],
+                  options:Options, extra_flags:list[string]=[], cxx:bool=false): file
+{
+	flags = binary_flags(options);
+	compiler = if cxx compilers.cxx else compilers.cc;
+
+	gcc.link_binary(compiler, objects, binary, linker_flags+flags)
 };
 
 
@@ -154,6 +148,37 @@ system_headers = function(dirs:list[file]): list[string]
 	{
 		'-isystem ' + dir.fullname
 	}
+};
+
+
+#
+# Create a GCC-like toolchain.
+#
+create_toolchain = function(compilers:toolchain.Compilers,
+                            extra_compile_flags:list[string],
+                            extra_linker_flags:list[string]): toolchain.Toolchain
+{
+	srcflags = function(opts:Options, cxx:bool): list[string]
+	{
+		compile_flags(opts, cxx) + extra_compile_flags
+	};
+
+	binflags = function(opts:Options, cxx:bool): list[string]
+	{
+		# TODO: don't assume dynamic binaries
+		binary_flags(opts, cxx, true) + extra_linker_flags
+	};
+
+	libflags = function(opts:Options, cxx:bool): list[string]
+	{
+		(if opts.debug ['-g'] else [])
+		+
+		(if platform.darwin ['-Wl,-undefined' '-Wl,dynamic_lookup'] else [])
+		+
+		['-shared']
+	};
+
+	toolchain.create(compilers, srcflags, binflags, libflags)
 };
 
 

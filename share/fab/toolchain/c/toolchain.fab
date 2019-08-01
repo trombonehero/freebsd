@@ -1,0 +1,121 @@
+#
+# Description of a C/C++ toolchain
+#
+
+#
+# A toolchain must have both a C and a C++ compiler.
+#
+Compilers = type record[cc:file, cxx:file];
+
+#
+# Options represent compiler flags in a more structured way.
+#
+Options = type record
+[
+	debug:bool,
+	definitions:list[string],
+	cflags:list[string],
+	cxxflags:list[string],
+	include_dirs:list[file],
+	optlevel:int,
+	pic:bool,
+	sanitizer:string,
+	system_include_dirs:list[file],
+	warnings:list[string]
+];
+
+#
+# A function that can process C/C++ options and turn them into compiler arguments.
+#
+# Parameters:
+#  - C/C++ compilation options
+#  - whether or not we are compiling with C++
+#
+# Result:
+#  - a list of command-line arguments
+#
+OptionsProcessor = type (Options, bool)->list[string];
+
+#
+# A function that compiles a single source file.
+#
+# Parameters:
+#  - a source file
+#  - compiler options
+#  - (extra) flags
+#  - (extra) include directories
+#  - (extra) dependencies
+#
+# Result:
+#  - a compiled object file
+#
+CompileOne = type (file[in], Options, list[string], list[file[in]], list[file[in]])->file;
+
+#
+# A function that compiles a single source file.
+#
+# Parameters:
+#  - a list of source files
+#  - compiler options
+#  - (extra) flags
+#  - (extra) include directories
+#  - (extra) dependencies
+#
+# Result:
+#  - a list of compiled object files
+#
+CompileSome = type
+	(list[file[in]], Options, list[string], list[file[in]], list[file[in]])->list[file];
+
+Toolchain = type record
+[
+	compile_src:CompileOne,
+	compile_srcs:CompileSome,
+	link_binary:(list[file[in]], string, file, bool, list[string])->file,
+	link_shared_library:(list[file[in]], string, file, bool, list[string])->file,
+];
+
+
+create = function(compilers:Compilers, srcflags:OptionsProcessor,
+                  binflags:OptionsProcessor, libflags:OptionsProcessor): Toolchain
+{
+	record
+	{
+		# Compile a single source file into a corresponding object file
+		compile_src = function(src:file, options:Options, extra_flags:list[string]=[],
+		                       extra_header_dirs:list[file]=[], dependencies:list[file]=[])
+			: file
+		{
+			cxx = not src.extension == 'c';
+			compiler = if cxx compilers.cxx else compilers.cc;
+
+			all_extra_includes = extra_header_dirs + (src.includes ? []);
+
+			# TODO: record merging
+			opts:Options = record
+			{
+				debug = options.debug;
+				definitions = options.definitions;
+				cflags = options.cflags;
+				cxxflags = options.cxxflags;
+				include_dirs = options.include_dirs + all_extra_includes;
+				optlevel = options.optlevel;
+				pic = options.pic;
+				sanitizer = options.sanitizer;
+				system_include_dirs = options.system_include_dirs;
+				warnings = options.warnings;
+			};
+
+			flags = srcflags(opts, cxx)
+				+ extra_flags
+				+ (src.cxxflags ? [])
+				;
+
+			obj = src + '.o';
+			compile_one(compiler, src, obj, flags, dependencies);
+
+			# Let the result be the generated file rather than the action that built it
+			obj
+		};
+	}
+};

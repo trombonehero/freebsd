@@ -37,6 +37,8 @@ linker_flags =
 	(if lto ['-flto' '-O4'] else [])
 	;
 
+test_toolchain = gcc.create_toolchain(compilers, compile_flags, linker_flags);
+
 
 binary = function(objects:list[file[in]], binary:file[out],
                   options:gcc.Options, extra_flags:list[string]=[], cxx:bool=false): file

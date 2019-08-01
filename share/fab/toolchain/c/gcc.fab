@@ -41,9 +41,8 @@ binary = function(objects:list[file[in]], binary:file[out],
 	gcc.link_binary(cxx, objects, binary, linker_flags + flags)
 };
 
-compile_options = gcc.compiler_options;
 compile = function(srcs:list[file],
-                   options:compile_options,
+                   options:gcc.Options,
                    extra_flags:list[string]=[],
                    extra_header_dirs:list[file]=[],
                    dependencies:list[file[in]]=[]

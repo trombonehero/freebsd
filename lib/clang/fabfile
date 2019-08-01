@@ -12,7 +12,7 @@ gendir = toolchain.shell.mkdir(builddir, 'gen');
 #
 # TODO: build these options dynamically
 #
-llvm_options:toolchain.c.compiler_options = record
+llvm_options:toolchain.c.gcc.Options = record
 {
 	debug = false;
 

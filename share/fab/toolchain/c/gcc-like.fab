@@ -12,7 +12,7 @@ Compilers = type record[cc:file, cxx:file];
 #
 # Options represent compiler flags in a more structured way.
 #
-compiler_options = type record
+Options = type record
 [
 	debug:bool,
 	definitions:list[string],
@@ -26,7 +26,7 @@ compiler_options = type record
 	warnings:list[string]
 ];
 
-default_compile_options:compiler_options = record
+default_compile_options:Options = record
 {
 	debug = false;
 	definitions = [];
@@ -40,7 +40,7 @@ default_compile_options:compiler_options = record
 	warnings = [];
 };
 
-compile_flags = function(opts:compiler_options, cxx:bool=false,
+compile_flags = function(opts:Options, cxx:bool=false,
                          extra_header_dirs:list[file]=[]): list[string]
 {
 	include_dirs = opts.include_dirs + extra_header_dirs;
@@ -64,40 +64,22 @@ compile_flags = function(opts:compiler_options, cxx:bool=false,
 	(foreach define <- opts.definitions '-D' + define)
 };
 
-binary_options = type record
-[
-	debug:bool,
-	dynamic:bool,
-	libraries:list[string],
-	sanitizer:string,
-];
-
-binary_flags = function(opts:binary_options): list[string]
+binary_flags = function(opts:Options, dynamic:bool=false): list[string]
 {
 	(if opts.debug ['-g'] else [])
 	+
 	(if opts.sanitizer != '' ['-fsanitize=' + opts.sanitizer] else [])
 	+
-	(if opts.dynamic and platform.posix ['-rdynamic'] else [])
+	(if dynamic and platform.posix ['-rdynamic'] else [])
 	+
 	(foreach lib <- opts.libraries '-l' + lib)
 };
 
-library_options = type record
-[
-	shared_library:bool,
-];
-
-default_library_options = record
-{
-	shared_library = true;
-}
-
-library_flags = function(opts:library_options): list[string]
+library_flags = function(shared_library:bool): list[string]
 {
 	(if platform.darwin ['-Wl,-undefined' '-Wl,dynamic_lookup'] else [])
 	+
-	(if opts.shared_library ['-shared'] else [])
+	(if shared_library ['-shared'] else [])
 };
 
 # Get information about the current platform (POSIX? Darwin? Windows?)
@@ -109,7 +91,7 @@ platform = import('platform');
 #
 compile = function(compilers:Compilers,
                    srcs:list[file],
-                   options:compiler_options,
+                   options:Options,
                    extra_flags:list[string]=[],
                    extra_header_dirs:list[file]=[],
                    dependencies:list[file[in]]=[]
@@ -137,10 +119,10 @@ compile = function(compilers:Compilers,
 # Compile objects into a shared library given by libname (e.g., `foo` for `libfoo.so`).
 #
 library = function(compiler:file, objects:list[file], libname:string, subdir:file,
-                   options:library_options, extra_flags:list[string] = []): file
+                   shared:bool, extra_flags:list[string]=[]): file
 {
 	filename = file(library_name(libname), subdir=subdir);
-	flags = library_flags(options) + extra_flags;
+	flags = library_flags(shared) + extra_flags;
 
 	link_library(compiler, objects, filename, flags)
 };

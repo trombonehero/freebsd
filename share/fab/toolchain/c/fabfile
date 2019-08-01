@@ -1,4 +1,5 @@
 clang = import('clang.fab');
 default = clang;
 
-compiler_options = default.compiler_options;
+# Provide access to common GCC-like types, etc.
+gcc = default.gcc;

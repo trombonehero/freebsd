@@ -21,8 +21,6 @@ compilers = record
 
 # Most of this functionality is just a wrapper around generic "GCC-like" functionality.
 gcc = import('gcc-like.fab');
-compiler_options = gcc.compiler_options;
-library_options = gcc.library_options;
 
 #
 # Clang specializations:
@@ -41,8 +39,7 @@ linker_flags =
 
 
 binary = function(objects:list[file[in]], binary:file[out],
-                  options:gcc.binary_options,
-                  extra_flags:list[string]=[], cxx:bool=false): file
+                  options:gcc.Options, extra_flags:list[string]=[], cxx:bool=false): file
 {
 	flags = gcc.binary_flags(options);
 	compiler = if cxx compilers.cxx else compilers.cc;
@@ -51,7 +48,7 @@ binary = function(objects:list[file[in]], binary:file[out],
 };
 
 compile = function(srcs:list[file],
-                   options:gcc.compiler_options=gcc.default_compile_options,
+                   options:gcc.Options=gcc.default_compile_options,
                    extra_flags:list[string]=[],
                    extra_header_dirs:list[file]=[],
                    dependencies:list[file[in]]=[]
@@ -65,8 +62,7 @@ shared_library = function(objects:list[file[in]], libname:string, subdir:file,
                           extra_flags:list[string]=[], cxx:bool=false): file[out]
 {
 	compiler = if cxx compilers.cxx else compilers.cc;
-	gcc.library(compiler, objects, libname, subdir,
-	            record { shared_library = true; }, extra_flags)
+	gcc.library(compiler, objects, libname, subdir, shared=true, extra_flags=extra_flags)
 };
 
 static_library = function(objects:list[file[in]], libname:string, subdir:file,

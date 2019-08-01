@@ -10,12 +10,12 @@ compiler_options = type record
 [
 	debug:bool,
 	definitions:list[string],
-	flags:list[string],
+	cflags:list[string],
+	cxxflags:list[string],
 	include_dirs:list[file],
 	optlevel:int,
 	pic:bool,
 	sanitizer:string,
-	standard:string,
 	system_include_dirs:list[file],
 	warnings:list[string]
 ];
@@ -24,17 +24,17 @@ default_compile_options:compiler_options = record
 {
 	debug = false;
 	definitions = [];
-	flags = [];
+	cflags = [];
+	cxxflags = [];
 	include_dirs = [];
 	optlevel = 2;
 	pic = true;
 	sanitizer = '';
-	standard = '';
 	system_include_dirs = files(/usr/include);
 	warnings = [];
 };
 
-compile_flags = function(opts:compiler_options,
+compile_flags = function(opts:compiler_options, cxx:bool=false,
                          extra_header_dirs:list[file]=[]): list[string]
 {
 	include_dirs = opts.include_dirs + extra_header_dirs;
@@ -47,9 +47,7 @@ compile_flags = function(opts:compiler_options,
 	::
 	(if opts.sanitizer != '' ['-fsanitize=' + opts.sanitizer] else [])
 	+
-	(if opts.standard != '' ['-std=' + opts.standard] else [])
-	+
-	opts.flags
+	(if cxx opts.cxxflags else opts.cflags)
 	+
 	(foreach dir <- include_dirs '-I' + dir.fullname)
 	+
@@ -103,7 +101,7 @@ platform = import('platform');
 #
 # Compile some number of source files into their corresponding object files.
 #
-compile = function(compiler:file,
+compile = function(compilers:record[cc:file, cxx:file],
                    srcs:list[file],
                    options:compiler_options,
                    extra_flags:list[string]=[],
@@ -114,10 +112,12 @@ compile = function(compiler:file,
 	# Compile each source file into a corresponding object file and accumulate
 	# all of the object files into a list.
 	foreach src <- srcs {
+		cxx = not src.extension == 'c';
 		obj = src + '.o';
 		includes = extra_header_dirs + (src.includes ? []);
+		compiler = if cxx compilers.cxx else compilers.cc;
 
-		flags = compile_flags(options, includes)
+		flags = compile_flags(options, cxx, includes)
 			+ extra_flags
 			+ (src.cxxflags ? []);
 

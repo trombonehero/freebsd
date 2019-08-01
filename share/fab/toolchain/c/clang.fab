@@ -13,8 +13,11 @@ use_ir = lto or (args.ir ? false);
 
 # Find comnpiler binaries:
 which = import('which');
-cc = which.executable('clang');
-cxx = which.executable('clang++');
+compilers = record
+{
+	cc:file = which.executable('clang');
+	cxx:file = which.executable('clang++');
+};
 
 # Most of this functionality is just a wrapper around generic "GCC-like" functionality.
 gcc = import('gcc-like.fab');
@@ -39,12 +42,12 @@ linker_flags =
 
 binary = function(objects:list[file[in]], binary:file[out],
                   options:gcc.binary_options,
-                  extra_flags:list[string] = []): file
+                  extra_flags:list[string]=[], cxx:bool=false): file
 {
 	flags = gcc.binary_flags(options);
+	compiler = if cxx compilers.cxx else compilers.cc;
 
-	# TODO: cc or cxx?
-	gcc.link_binary(cxx, objects, binary, linker_flags + flags)
+	gcc.link_binary(compiler, objects, binary, linker_flags+flags)
 };
 
 compile = function(srcs:list[file],
@@ -54,21 +57,22 @@ compile = function(srcs:list[file],
                    dependencies:list[file[in]]=[]
 	): list[file]
 {
-	# TODO: cc or cxx?
-	gcc.compile(cxx, srcs, options, compile_flags + extra_flags,
+	gcc.compile(compilers, srcs, options, compile_flags + extra_flags,
 	            extra_header_dirs, dependencies)
 };
 
 shared_library = function(objects:list[file[in]], libname:string, subdir:file,
-                          extra_flags:list[string] = []): file[out]
+                          extra_flags:list[string]=[], cxx:bool=false): file[out]
 {
-	gcc.library(cc, objects, libname, subdir,
+	compiler = if cxx compilers.cxx else compilers.cc;
+	gcc.library(compiler, objects, libname, subdir,
 	            record { shared_library = true; }, extra_flags)
 };
 
 static_library = function(objects:list[file[in]], libname:string, subdir:file,
                           extra_flags:list[string] = []): file[out]
 {
-	gcc.library(cc, objects, libname, subdir,
+	compiler = if cxx compilers.cxx else compilers.cc;
+	gcc.library(compiler, objects, libname, subdir,
 	            record { shared_library = false; }, extra_flags)
 };

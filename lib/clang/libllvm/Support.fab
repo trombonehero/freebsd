@@ -34,8 +34,8 @@ sources =
 		VersionTuple.cpp WithColor.cpp YAMLParser.cpp YAMLTraits.cpp
 
 		circular_raw_ostream.cpp raw_os_ostream.cpp raw_ostream.cpp
+		regcomp.c regerror.c regexec.c regfree.c regstrlcpy.c xxhash.cpp
 	)
-	#regcomp.c regerror.c regexec.c regfree.c regstrlcpy.c xxhash.cpp
 	+
 	(if opts.llvm.clang.extras
 	{

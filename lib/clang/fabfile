@@ -32,7 +32,16 @@ llvm_options:toolchain.c.compiler_options = record
 		'__STDC_LIMIT_MACROS'
 	];
 
-	flags =
+	cflags =
+	[
+		'-pipe'
+		'-fdata-sections'
+		'-ffunction-sections'
+		'-gline-tables-only'
+		'-std=c11'
+	];
+
+	cxxflags =
 	[
 		'-pipe'
 		'-fdata-sections'
@@ -40,12 +49,12 @@ llvm_options:toolchain.c.compiler_options = record
 		'-fno-exceptions'
 		'-fno-rtti'
 		'-gline-tables-only'
+		'-std=c++11'
 		'-stdlib=libc++'
 	];
 
 	optlevel = 2;
 	pic = false;
-	standard = 'c++11';
 
 	include_dirs =
 	{

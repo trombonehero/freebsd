@@ -4,6 +4,12 @@
 
 
 #
+# A GCC-like compiler toolchain must have both a C and a C++ compiler.
+#
+Compilers = type record[cc:file, cxx:file];
+
+
+#
 # Options represent compiler flags in a more structured way.
 #
 compiler_options = type record
@@ -101,7 +107,7 @@ platform = import('platform');
 #
 # Compile some number of source files into their corresponding object files.
 #
-compile = function(compilers:record[cc:file, cxx:file],
+compile = function(compilers:Compilers,
                    srcs:list[file],
                    options:compiler_options,
                    extra_flags:list[string]=[],

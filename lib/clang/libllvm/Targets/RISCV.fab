@@ -1,21 +1,22 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-#.if ${MK_LLVM_TARGET_RISCV} != "no"
-#TGHDRS+=	RISCVGenAsmMatcher.inc
-#TGHDRS+=	RISCVGenAsmWriter.inc
-#TGHDRS+=	RISCVGenCallingConv.inc
-#TGHDRS+=	RISCVGenCompressInstEmitter.inc
-#TGHDRS+=	RISCVGenDAGISel.inc
-#TGHDRS+=	RISCVGenDisassemblerTables.inc
-#TGHDRS+=	RISCVGenDAGISel.inc
-#TGHDRS+=	RISCVGenInstrInfo.inc
-#TGHDRS+=	RISCVGenMCCodeEmitter.inc
-#TGHDRS+=	RISCVGenMCPseudoLowering.inc
-#TGHDRS+=	RISCVGenRegisterInfo.inc
-#TGHDRS+=	RISCVGenSubtargetInfo.inc
-#TGHDRS+=	RISCVGenSystemOperands.inc
-#.endif # MK_LLVM_TARGET_RISCV
+rules = target_tblgen_rules('RISCV', 'RISCV');
+generated_headers =
+[
+	rules.asmMatcher()
+	rules.asmWriter()
+	rules.callingConv()
+	rules.compressedInstEmitter()
+	rules.disassembler()
+	rules.instrInfo()
+	rules.isel.dag()
+	rules.mc.emitter()
+	rules.mc.pseudoLowering()
+	rules.reg.info()
+	rules.subtarget()
+	rules.system.operands()
+];
 
 sources =
 {

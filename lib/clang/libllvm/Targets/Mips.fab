@@ -1,21 +1,23 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-#.if ${MK_LLVM_TARGET_MIPS} != "no"
-#TGHDRS+=	MipsGenAsmMatcher.inc
-#TGHDRS+=	MipsGenAsmWriter.inc
-#TGHDRS+=	MipsGenCallingConv.inc
-#TGHDRS+=	MipsGenDAGISel.inc
-#TGHDRS+=	MipsGenDisassemblerTables.inc
-#TGHDRS+=	MipsGenFastISel.inc
-#TGHDRS+=	MipsGenGlobalISel.inc
-#TGHDRS+=	MipsGenInstrInfo.inc
-#TGHDRS+=	MipsGenMCCodeEmitter.inc
-#TGHDRS+=	MipsGenMCPseudoLowering.inc
-#TGHDRS+=	MipsGenRegisterBank.inc
-#TGHDRS+=	MipsGenRegisterInfo.inc
-#TGHDRS+=	MipsGenSubtargetInfo.inc
-#.endif # MK_LLVM_TARGET_MIPS
+rules = target_tblgen_rules('Mips', 'Mips');
+generated_headers =
+[
+	rules.asmMatcher()
+	rules.asmWriter()
+	rules.callingConv()
+	rules.disassembler()
+	rules.isel.dag()
+	rules.isel.fast()
+	rules.isel.global()
+	rules.instrInfo()
+	rules.mc.emitter()
+	rules.mc.pseudoLowering()
+	rules.reg.bank()
+	rules.reg.info()
+	rules.subtarget()
+];
 
 sources =
 {

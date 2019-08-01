@@ -1,22 +1,23 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-#.endfor
-#.if ${MK_LLVM_TARGET_X86} != "no"
-#TGHDRS+=	X86GenAsmMatcher.inc
-#TGHDRS+=	X86GenAsmWriter.inc
-#TGHDRS+=	X86GenAsmWriter1.inc
-#TGHDRS+=	X86GenCallingConv.inc
-#TGHDRS+=	X86GenDAGISel.inc
-#TGHDRS+=	X86GenDisassemblerTables.inc
-#TGHDRS+=	X86GenEVEX2VEXTables.inc
-#TGHDRS+=	X86GenFastISel.inc
-#TGHDRS+=	X86GenGlobalISel.inc
-#TGHDRS+=	X86GenInstrInfo.inc
-#TGHDRS+=	X86GenRegisterBank.inc
-#TGHDRS+=	X86GenRegisterInfo.inc
-#TGHDRS+=	X86GenSubtargetInfo.inc
-#.endif # MK_LLVM_TARGET_X86
+rules = target_tblgen_rules('X86', 'X86');
+generated_headers =
+[
+	rules.asmMatcher()
+	rules.asmWriter()
+	rules.asmWriter1()
+	rules.callingConv()
+	rules.disassembler()
+	rules.evex2vex()
+	rules.instrInfo()
+	rules.isel.dag()
+	rules.isel.fast()
+	rules.isel.global()
+	rules.reg.bank()
+	rules.reg.info()
+	rules.subtarget()
+];
 
 sources =
 {

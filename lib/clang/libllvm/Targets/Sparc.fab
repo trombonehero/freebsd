@@ -1,17 +1,19 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
-#.if ${MK_LLVM_TARGET_SPARC} != "no"
-#TGHDRS+=	SparcGenAsmMatcher.inc
-#TGHDRS+=	SparcGenAsmWriter.inc
-#TGHDRS+=	SparcGenCallingConv.inc
-#TGHDRS+=	SparcGenDAGISel.inc
-#TGHDRS+=	SparcGenDisassemblerTables.inc
-#TGHDRS+=	SparcGenInstrInfo.inc
-#TGHDRS+=	SparcGenMCCodeEmitter.inc
-#TGHDRS+=	SparcGenRegisterInfo.inc
-#TGHDRS+=	SparcGenSubtargetInfo.inc
-#.endif # MK_LLVM_TARGET_SPARC
+rules = target_tblgen_rules('Sparc', 'Sparc');
+generated_headers =
+[
+	rules.asmMatcher()
+	rules.asmWriter()
+	rules.callingConv()
+	rules.disassembler()
+	rules.instrInfo()
+	rules.isel.dag()
+	rules.mc.emitter()
+	rules.reg.info()
+	rules.subtarget()
+];
 
 sources =
 {

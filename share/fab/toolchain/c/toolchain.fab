@@ -70,7 +70,7 @@ CompileSome = type
 Toolchain = type record
 [
 	compile_src:CompileOne,
-	#compile_srcs:CompileSome,
+	compile_srcs:CompileSome,
 	#link_binary:(list[file[in]], string, file, bool, list[string])->file,
 	#link_shared_library:(list[file[in]], string, file, bool, list[string])->file,
 ];
@@ -117,6 +117,16 @@ create = function(compilers:Compilers, srcflags:OptionsProcessor,
 
 			# Let the result be the generated file rather than the action that built it
 			obj
+		};
+
+		compile_srcs = function(srcs:list[file[in]], opts:Options, flags:list[string],
+		                        header_dirs:list[file[in]], deps:list[file[in]])
+			: list[file]
+		{
+			foreach src <- srcs
+			{
+				compile(src, opts, flags, header_dirs, deps)
+			}
 		};
 	}
 };

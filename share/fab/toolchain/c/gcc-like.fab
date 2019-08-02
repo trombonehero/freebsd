@@ -68,35 +68,6 @@ platform = import('platform');
 
 
 #
-# Compile some number of source files into their corresponding object files.
-#
-compile = function(compilers:toolchain.Compilers,
-                   srcs:list[file],
-                   options:Options,
-                   extra_flags:list[string]=[],
-                   extra_header_dirs:list[file]=[],
-                   dependencies:list[file[in]]=[]
-	): list[file]
-{
-	# Compile each source file into a corresponding object file and accumulate
-	# all of the object files into a list.
-	foreach src <- srcs {
-		cxx = not src.extension == 'c';
-		obj = src + '.o';
-		includes = extra_header_dirs + (src.includes ? []);
-		compiler = if cxx compilers.cxx else compilers.cc;
-
-		flags = compile_flags(options, cxx, includes)
-			+ extra_flags
-			+ (src.cxxflags ? []);
-
-		compile_one(compiler, src, obj, flags, dependencies);
-		obj
-	}
-};
-
-
-#
 # Link objects into an executable binary.
 #
 binary = function(compiler:file, objects:list[file[in]], binary:file[out],

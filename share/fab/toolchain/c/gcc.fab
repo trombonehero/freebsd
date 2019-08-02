@@ -11,8 +11,11 @@ lto = args.lto ? false;
 
 # Find comnpiler binaries:
 which = import('which');
-cc = which.executable('gcc');
-cxx = which.executable('g++');
+compilers = record
+{
+	cc = which.executable('gcc');
+	cxx = which.executable('g++');
+};
 
 # Most of this functionality is just a wrapper around generic "GCC-like" functionality.
 gcc = import('gcc-like.fab');
@@ -29,6 +32,8 @@ linker_flags =
 	(if lto ['-flto'] else [])
 	;
 
+toolchain = gcc.create_toolchain(compilers, compile_flags, linker_flags);
+compile = toolchain.compile_srcs;
 
 # TODO: let arbitrary name references be types
 binary_options = gcc.binary_options;
@@ -39,18 +44,6 @@ binary = function(objects:list[file[in]], binary:file[out],
 
 	# TODO: cc or cxx?
 	gcc.link_binary(cxx, objects, binary, linker_flags + flags)
-};
-
-compile = function(srcs:list[file],
-                   options:gcc.Options,
-                   extra_flags:list[string]=[],
-                   extra_header_dirs:list[file]=[],
-                   dependencies:list[file[in]]=[]
-	): list[file]
-{
-	# TODO: cc or cxx?
-	gcc.compile(cxx, srcs, options, compile_flags + extra_flags,
-	            extra_header_dirs, dependencies)
 };
 
 library_options = gcc.library_options;

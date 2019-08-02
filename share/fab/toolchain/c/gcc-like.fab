@@ -6,7 +6,7 @@
 toolchain = import('toolchain.fab');
 Options = toolchain.Options;
 
-default_compile_options:Options = record
+default_options:Options = record
 {
 	debug = false;
 	definitions = [];
@@ -178,7 +178,7 @@ create_toolchain = function(compilers:toolchain.Compilers,
 		['-shared']
 	};
 
-	toolchain.create(compilers, srcflags, binflags, libflags)
+	toolchain.create(compilers, default_options, srcflags, binflags, libflags)
 };
 
 

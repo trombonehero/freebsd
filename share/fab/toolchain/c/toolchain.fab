@@ -76,13 +76,15 @@ Toolchain = type record
 ];
 
 
-create = function(compilers:Compilers, srcflags:OptionsProcessor,
+create = function(compilers:Compilers, default_options:Options, srcflags:OptionsProcessor,
                   binflags:OptionsProcessor, libflags:OptionsProcessor): Toolchain
 {
 	record
 	{
 		# Compile a single source file into a corresponding object file
-		compile_src = function(src:file[in], options:Options, extra_flags:list[string],
+		compile_src = function(src:file[in],
+		                       options:Options=default_options,
+		                       extra_flags:list[string],
 		                       extra_header_dirs:list[file[in]],
 		                       dependencies:list[file[in]])
 			: file
@@ -119,13 +121,16 @@ create = function(compilers:Compilers, srcflags:OptionsProcessor,
 			obj
 		};
 
-		compile_srcs = function(srcs:list[file[in]], opts:Options, flags:list[string],
-		                        header_dirs:list[file[in]], deps:list[file[in]])
+		compile_srcs = function(srcs:list[file[in]],
+		                        opts:Options=default_options,
+		                        flags:list[string]=[],
+		                        header_dirs:list[file[in]]=files(),
+		                        deps:list[file[in]]=files())
 			: list[file]
 		{
 			foreach src <- srcs
 			{
-				compile(src, opts, flags, header_dirs, deps)
+				compile_src(src, opts, flags, header_dirs, deps)
 			}
 		};
 	}

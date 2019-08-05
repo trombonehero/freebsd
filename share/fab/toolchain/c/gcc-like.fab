@@ -166,7 +166,7 @@ create_toolchain = function(compilers:toolchain.Compilers,
 
 # Compile one source file into one object file.
 compile_one = action('${compiler} -c ${flags} -MMD -MF ${obj}.d ${src} -o ${obj}',
-	     description = 'Compiling ${obj}', depfile = '${obj}.d'
+	     description='Compiling ${obj}', depfile='${obj}.d', deps='gcc'
 	     <- compiler:file[in], src:file[in], obj:file[out], flags:list[string],
 	        otherDeps:list[file[in]] = [], dependencies:string = '');
 

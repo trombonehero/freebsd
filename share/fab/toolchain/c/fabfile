@@ -1,5 +1,24 @@
-clang = import('clang.fab');
-default = clang;
+# We expect to receive a "which" plugin that can find executables
+WhichPlugin = type record[
+	executable:(string)->file,
+	executable_name:(string)->string,
+];
+which:WhichPlugin = args.which ? import('which');
 
-# Provide access to common GCC-like types, etc.
-gcc = default.gcc;
+have_clang = which.executable_name('clang') != '';
+have_gcc = which.executable_name('gcc') != '';
+
+# TODO: make unary not high-precedence than binary and
+if (not have_clang) and (not have_gcc)
+{
+	# TODO: error() once we have it
+	print('No usable compiler found')
+}
+else [];	# TODO: don't require empty else
+
+clang = if have_clang import('clang.fab') else record {};
+gcc = if have_gcc import('gcc.fab') else record {};
+
+# TODO: null toolchain? default (system cc/c++) toolchain?
+
+default = if have_clang clang else gcc;

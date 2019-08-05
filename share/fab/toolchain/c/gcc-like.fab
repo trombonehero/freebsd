@@ -2,6 +2,8 @@
 # Description of how to compile things with "GCC-like" compilers (GCC, Clang, others?)
 #
 
+# Get information about the current platform (POSIX? Darwin? Windows?)
+platform = args.platform ? import('platform');
 
 toolchain = import('toolchain.fab');
 Options = toolchain.Options;
@@ -16,7 +18,13 @@ default_options:Options = record
 	optlevel = 2;
 	pic = true;
 	sanitizer = '';
-	system_include_dirs = files(/usr/include);
+
+	system_include_dirs =
+		if platform.darwin files()
+		else if platform.posix files(/usr/include)
+		else files()
+		;
+
 	warnings = [];
 };
 
@@ -45,7 +53,8 @@ compile_flags = function(opts:Options, cxx:bool=false,
 	(foreach define <- opts.definitions '-D' + define)
 };
 
-binary_flags = function(opts:Options, cxx:bool, dynamic:bool=false): list[string]
+binary_flags = function(opts:Options, cxx:bool, libraries:list[string]=[],
+                        dynamic:bool=false): list[string]
 {
 	(if opts.debug ['-g'] else [])
 	+
@@ -53,7 +62,7 @@ binary_flags = function(opts:Options, cxx:bool, dynamic:bool=false): list[string
 	+
 	(if dynamic and platform.posix ['-rdynamic'] else [])
 	+
-	(foreach lib <- opts.libraries '-l' + lib)
+	(foreach lib <- libraries '-l' + lib)
 };
 
 library_flags = function(shared_library:bool): list[string]
@@ -63,17 +72,15 @@ library_flags = function(shared_library:bool): list[string]
 	(if shared_library ['-shared'] else [])
 };
 
-# Get information about the current platform (POSIX? Darwin? Windows?)
-platform = import('platform');
-
 
 #
 # Link objects into an executable binary.
 #
 binary = function(compiler:file, objects:list[file[in]], binary:file[out],
-                  options:Options, extra_flags:list[string]=[], cxx:bool=false): file
+                  options:Options, libraries:list[string]=[],
+                  extra_flags:list[string]=[], cxx:bool=false): file
 {
-	flags = binary_flags(options);
+	flags = binary_flags(options, libraries);
 	compiler = if cxx compilers.cxx else compilers.cc;
 
 	gcc.link_binary(compiler, objects, binary, linker_flags+flags)

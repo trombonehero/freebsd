@@ -50,8 +50,8 @@ print('Toolchain path:');
 print(path);
 print('');
 
-toolchain_which = import('which', path=path).executable;
-toolchain = import('share/fab/toolchain', which=toolchain_which);
+toolchain_which = import('which', path=path);
+toolchain = import('share/fab/toolchain', platform=host, which=toolchain_which);
 
 #
 # Set up staging area for final build products.

@@ -18,8 +18,12 @@ compilers = record
 };
 
 # Most of this functionality is just a wrapper around generic "GCC-like" functionality.
-gcc = import('gcc-like.fab');
+platform = args.platform ? import('platform');
+gcc = import('gcc-like.fab', platform=platform);
 
+#
+# GCC specializations:
+#
 compile_flags =
 	(if force_colour ['-fdiagnostics-color=always'] else [])
 	+
@@ -35,23 +39,19 @@ linker_flags =
 toolchain = gcc.create_toolchain(compilers, compile_flags, linker_flags);
 compile = toolchain.compile_srcs;
 
-# TODO: let arbitrary name references be types
-binary_options = gcc.binary_options;
 binary = function(objects:list[file[in]], binary:file[out],
-                  options:binary_options, extra_flags:list[string] = []): file
+                  options:gcc.Options, libraries:list[string]=[],
+                  extra_flags:list[string]=[], cxx:bool=false, dynamic:bool=false): file
 {
-	flags = gcc.binary_flags(options);
+	flags = gcc.binary_flags(options, cxx, libraries, dynamic);
+	compiler = if cxx compilers.cxx else compilers.cc;
 
-	# TODO: cc or cxx?
-	gcc.link_binary(cxx, objects, binary, linker_flags + flags)
+	gcc.link_binary(compiler, objects, binary, linker_flags+flags)
 };
 
-library_options = gcc.library_options;
-library = function(objects:list[file[in]], libname:string, subdir:file,
-                   options:library_options, extra_flags:list[string] = []): file
+shared_library = function(objects:list[file[in]], libname:string, subdir:file,
+                          extra_flags:list[string]=[], cxx:bool=false): file[out]
 {
-	# TODO: cc or cxx?
-	gcc.library(cxx, objects, libname, subdir, options,
-	            extra_flags = linker_flags + extra_flags)
+	compiler = if cxx compilers.cxx else compilers.cc;
+	gcc.library(compiler, objects, libname, subdir, shared=true, extra_flags=extra_flags)
 };
-

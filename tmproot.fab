@@ -82,11 +82,11 @@ headers = if target.architecture == 'amd64'
 	];
 
 	# TODO: flatten this into a list[file]
-	foreach headers:MachineHeaders <- machdep
+	for headers:MachineHeaders in machdep
 	{
 		destdir = includedir :: headers.destination;
 
-		foreach header <- headers.sources
+		for header in headers.sources
 			shell.copy(header, destdir :: header.filename)
 	}
 }

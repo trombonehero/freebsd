@@ -71,7 +71,7 @@ common_tblgen_files:list[TblGen] =
 
 tblgen_files = common_tblgen_files;
 
-generated_headers = foreach i <- tblgen_files
+generated_headers = for i in tblgen_files
 {
 	source = file(i.source + '.td', subdir=i.dir);
 	target = file(i.target + '.inc', subdir=gendir::'llvm');

@@ -15,7 +15,7 @@ tblgen = import('tblgen.fab',
 
 headers = function(srcs:list[file], dest_dir:file): list[file]
 {
-	foreach src <- srcs
+	for src in srcs
 	{
 		shell.copy(src, file(src.filename, subdir=dest_dir))
 	}

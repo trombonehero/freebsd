@@ -128,7 +128,7 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 		                        deps:list[file[in]]=files())
 			: list[file]
 		{
-			foreach src <- srcs
+			for src in srcs
 			{
 				compile_src(src, opts, flags, header_dirs, deps)
 			}

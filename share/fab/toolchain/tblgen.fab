@@ -13,7 +13,7 @@ tblgen = record
 	                   flags:list[string], includes:list[file]=[]): file
 	{
 		all_flags = flags
-			+ (foreach d <- includes '-I' + d.fullname )
+			+ (for d in includes '-I' + d.fullname )
 			;
 
 		raw(source, output, all_flags, tool)

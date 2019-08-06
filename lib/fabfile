@@ -6,7 +6,7 @@ libnames = [
 	'calendar'
 ];
 
-libraries = foreach name <- libnames
+libraries = for name in libnames
 {
 	import('lib' + name)
 };

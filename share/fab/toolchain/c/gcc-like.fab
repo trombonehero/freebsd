@@ -44,13 +44,13 @@ compile_flags = function(opts:Options, cxx:bool=false,
 	+
 	(if cxx opts.cxxflags else opts.cflags)
 	+
-	(foreach dir <- include_dirs '-I' + dir.fullname)
+	(for dir in include_dirs '-I' + dir.fullname)
 	+
-	(foreach dir <- opts.system_include_dirs '-isystem ' + dir.fullname)
+	(for dir in opts.system_include_dirs '-isystem ' + dir.fullname)
 	+
-	(foreach warning <- opts.warnings '-W' + warning)
+	(for warning in opts.warnings '-W' + warning)
 	+
-	(foreach define <- opts.definitions '-D' + define)
+	(for define in opts.definitions '-D' + define)
 };
 
 binary_flags = function(opts:Options, cxx:bool, libraries:list[string]=[],
@@ -62,7 +62,7 @@ binary_flags = function(opts:Options, cxx:bool, libraries:list[string]=[],
 	+
 	(if dynamic and platform.posix ['-rdynamic'] else [])
 	+
-	(foreach lib <- libraries '-l' + lib)
+	(for lib in libraries '-l' + lib)
 };
 
 library_flags = function(shared_library:bool): list[string]
@@ -122,7 +122,7 @@ library_name = function(name:string): string
 #
 system_headers = function(dirs:list[file]): list[string]
 {
-	foreach dir <- dirs
+	for dir in dirs
 	{
 		'-isystem ' + dir.fullname
 	}

@@ -22,15 +22,12 @@ target = record
 	windows = false;
 };
 
-print('Configuring FreeBSD build');
-print('');
+VERSION = 13;		# TODO: get from somewhere else?
+ABI = target.osname + ':' + string(VERSION) + ':' + target.architecture;
 
+print('Configuring ' + ABI);
 print('Host platform:');
 print(host);
-print('');
-
-print('Target platform:');
-print(record { osname=target.osname; architecture=target.architecture; });
 print('');
 
 #
@@ -94,3 +91,5 @@ includes =
 # Import descriptions of source directories.
 #
 libraries = import('lib');
+
+print('Configuration complete!');

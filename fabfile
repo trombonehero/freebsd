@@ -38,7 +38,7 @@ options = import('options.fab');
 #
 # Import C and shell toolchains.
 #
-# Once issue fabriquer/fabrique#45 is resolved, we will be able to pull the
+# TODO: Once issue fabriquer/fabrique#45 is resolved, we will be able to pull the
 # default toolchain path from an environment variable. For now, however,
 # require a path to be passed in explicitly.
 #

@@ -76,7 +76,8 @@ Toolchain = type record
 ];
 
 
-create = function(compilers:Compilers, default_options:Options, srcflags:OptionsProcessor,
+create = function(compilers:Compilers, default_options:Options,
+                  compile_one:(file, Options, list[file])->file,
                   binflags:OptionsProcessor, libflags:OptionsProcessor): Toolchain
 {
 	record
@@ -89,9 +90,6 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 		                       dependencies:list[file[in]])
 			: file
 		{
-			cxx = not src.extension == 'c';
-			compiler = if cxx compilers.cxx else compilers.cc;
-
 			all_extra_includes = extra_header_dirs + (src.includes ? []);
 
 			# TODO: record merging
@@ -99,8 +97,8 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 			{
 				debug = options.debug;
 				definitions = options.definitions;
-				cflags = options.cflags;
-				cxxflags = options.cxxflags;
+				cflags = options.cflags + src.cflags ? [];
+				cxxflags = options.cxxflags + src.cxxflags ? [];
 				include_dirs = options.include_dirs + all_extra_includes;
 				optlevel = options.optlevel;
 				pic = options.pic;
@@ -109,16 +107,7 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 				warnings = options.warnings;
 			};
 
-			flags = srcflags(opts, cxx)
-				+ extra_flags
-				+ (src.cxxflags ? [])
-				;
-
-			obj = src + '.o';
-			compile_one(compiler, src, obj, flags, dependencies);
-
-			# Let the result be the generated file rather than the action that built it
-			obj
+			compile_one(src, opts, dependencies)
 		};
 
 		compile_srcs = function(srcs:list[file[in]],

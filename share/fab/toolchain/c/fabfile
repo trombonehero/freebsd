@@ -11,8 +11,7 @@ have_gcc = which.executable_name('gcc') != '';
 # TODO: make unary not high-precedence than binary and
 if (not have_clang) and (not have_gcc)
 {
-	# TODO: error() once we have it
-	print('No usable compiler found')
+	error('No usable compiler found')
 }
 else [];	# TODO: don't require empty else
 

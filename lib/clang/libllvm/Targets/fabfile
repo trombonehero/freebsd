@@ -6,8 +6,7 @@ build = opts.llvm.targets;
 if not (build.aarch64 or build.arm or build.bpf or build.mips
 	or build.powerpc or build.riscv or build.sparc or build.x86)
 {
-	# TODO: error() once fabrique issue #48 is resolved
-	print('No LLVM targets specified')
+	error('No LLVM targets specified')
 }
 else [];
 

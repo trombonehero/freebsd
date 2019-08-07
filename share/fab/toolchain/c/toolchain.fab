@@ -3,11 +3,6 @@
 #
 
 #
-# A toolchain must have both a C and a C++ compiler.
-#
-Compilers = type record[cc:file, cxx:file];
-
-#
 # Options represent compiler flags in a more structured way.
 #
 Options = type record
@@ -76,7 +71,7 @@ Toolchain = type record
 ];
 
 
-create = function(compilers:Compilers, default_options:Options,
+create = function(default_options:Options,
                   compile_one:(file, Options, list[file])->file,
                   binflags:OptionsProcessor, libflags:OptionsProcessor): Toolchain
 {

@@ -5,6 +5,9 @@
 # Get information about the current platform (POSIX? Darwin? Windows?)
 platform = args.platform ? import('platform');
 
+# A GCC-like toolchain must have both a C and a C++ compiler.
+Compilers = type record[cc:file, cxx:file];
+
 toolchain = import('toolchain.fab');
 Options = toolchain.Options;
 
@@ -132,7 +135,7 @@ system_headers = function(dirs:list[file]): list[string]
 #
 # Create a GCC-like toolchain.
 #
-create_toolchain = function(compilers:toolchain.Compilers,
+create_toolchain = function(compilers:Compilers,
                             extra_compile_flags:list[string],
                             extra_linker_flags:list[string]): toolchain.Toolchain
 {
@@ -164,7 +167,7 @@ create_toolchain = function(compilers:toolchain.Compilers,
 		['-shared']
 	};
 
-	toolchain.create(compilers, default_options, compile_src, binflags, libflags)
+	toolchain.create(default_options, compile_src, binflags, libflags)
 };
 
 

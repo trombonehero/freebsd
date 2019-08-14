@@ -5,9 +5,6 @@
 # Get information about the current platform (POSIX? Darwin? Windows?)
 platform = args.platform ? import('platform');
 
-# A GCC-like toolchain must have both a C and a C++ compiler.
-Compilers = type record[cc:file, cxx:file];
-
 toolchain = import('toolchain.fab');
 Options = toolchain.Options;
 
@@ -135,21 +132,13 @@ system_headers = function(dirs:list[file]): list[string]
 #
 # Create a GCC-like toolchain.
 #
-create_toolchain = function(compilers:Compilers,
+create_toolchain = function(compilers:toolchain.Compilers,
                             extra_compile_flags:list[string],
                             extra_linker_flags:list[string]): toolchain.Toolchain
 {
-	compile_src = function(src:file[in], options:Options, depends:list[file[in]]): file
+	srcflags = function(opts:Options, cxx:bool): list[string]
 	{
-		cxx = not src.extension == 'c';
-		compiler = if cxx compilers.cxx else compilers.cc;
-		flags = compile_flags(options, cxx) + extra_compile_flags;
-
-		obj = src + '.o';
-		compile_one(compiler, src, obj, flags, depends);
-
-		# Let the result be the generated file rather than the action that built it
-		obj
+		compile_flags(opts, cxx) + extra_compile_flags
 	};
 
 	binflags = function(opts:Options, cxx:bool): list[string]
@@ -167,7 +156,7 @@ create_toolchain = function(compilers:Compilers,
 		['-shared']
 	};
 
-	toolchain.create(default_options, compile_src, binflags, libflags)
+	toolchain.create(compilers, default_options, srcflags, binflags, libflags)
 };
 
 

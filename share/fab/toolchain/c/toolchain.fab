@@ -3,6 +3,11 @@
 #
 
 #
+# A toolchain must have both a C and a C++ compiler.
+#
+Compilers = type record[cc:file, cxx:file];
+
+#
 # Options represent compiler flags in a more structured way.
 #
 Options = type record
@@ -71,8 +76,7 @@ Toolchain = type record
 ];
 
 
-create = function(default_options:Options,
-                  compile_one:(file, Options, list[file])->file,
+create = function(compilers:Compilers, default_options:Options, srcflags:OptionsProcessor,
                   binflags:OptionsProcessor, libflags:OptionsProcessor): Toolchain
 {
 	record
@@ -85,6 +89,9 @@ create = function(default_options:Options,
 		                       dependencies:list[file[in]])
 			: file
 		{
+			cxx = not src.extension == 'c';
+			compiler = if cxx compilers.cxx else compilers.cc;
+
 			all_extra_includes = extra_header_dirs + (src.includes ? []);
 
 			# TODO: record merging
@@ -92,8 +99,8 @@ create = function(default_options:Options,
 			{
 				debug = options.debug;
 				definitions = options.definitions;
-				cflags = options.cflags + src.cflags ? [];
-				cxxflags = options.cxxflags + src.cxxflags ? [];
+				cflags = options.cflags;
+				cxxflags = options.cxxflags;
 				include_dirs = options.include_dirs + all_extra_includes;
 				optlevel = options.optlevel;
 				pic = options.pic;
@@ -102,7 +109,16 @@ create = function(default_options:Options,
 				warnings = options.warnings;
 			};
 
-			compile_one(src, opts, dependencies)
+			flags = srcflags(opts, cxx)
+				+ extra_flags
+				+ (src.cxxflags ? [])
+				;
+
+			obj = src + '.o';
+			compile_one(compiler, src, obj, flags, dependencies);
+
+			# Let the result be the generated file rather than the action that built it
+			obj
 		};
 
 		compile_srcs = function(srcs:list[file[in]],

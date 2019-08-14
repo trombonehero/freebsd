@@ -11,7 +11,7 @@ have_gcc = which.executable_name('gcc') != '';
 # TODO: make unary not high-precedence than binary and
 if (not have_clang) and (not have_gcc)
 {
-	error('No usable compiler found')
+	error('No usable compiler found (no clang, no gcc)')
 }
 else [];	# TODO: don't require empty else
 
@@ -21,3 +21,12 @@ gcc = if have_gcc import('gcc.fab') else record {};
 # TODO: null toolchain? default (system cc/c++) toolchain?
 
 default = if have_clang clang else gcc;
+
+fabfiles = files(
+	fabfile
+
+	clang.fab
+	gcc.fab
+	gcc-like.fab
+	toolchain.fab
+);

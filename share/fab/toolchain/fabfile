@@ -5,7 +5,9 @@
 which = args.which ? import('which');
 platform = args.platform ? import('platform');
 
-c = import('c', platform=platform, which=which).default;
+raw_c = import('c', platform=platform, which=which);
+c = raw_c.default;
+
 shell = import('shell.fab');
 
 tblgen = import('tblgen.fab',
@@ -26,3 +28,5 @@ man_page = function(src: file, links:list[string]=[]): list[file]
 	# TODO: implement!
 	[]
 };
+
+fabfiles = files(fabfile shell.fab tblgen.fab) + raw_c.fabfiles;

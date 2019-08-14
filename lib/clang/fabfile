@@ -75,7 +75,7 @@ llvm_options:toolchain.c.gcc.Options = record
 	warnings = ['all'];
 };
 
-llvm = import('libllvm', options=options);
+llvm = import('libllvm', options=options, mkdir=toolchain.shell.mkdir);
 
 srcs = llvm.sources;
 generated_headers = llvm.generated_headers;

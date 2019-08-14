@@ -1,6 +1,8 @@
 # vim: sw=4:ts=4:tw=78
 # $FreeBSD$
 
+mkdir:(file,string,bool)->file = args.mkdir;
+
 opts = args.options;
 
 TblGen = type record[
@@ -9,6 +11,11 @@ TblGen = type record[
 	target:string,
 	flags:list[string],
 ];
+
+llvm_gendir = mkdir(gendir, 'llvm');
+ir_gendir = mkdir(llvm_gendir, 'IR');
+mkdir(llvm_gendir, 'llvm-lib');
+mkdir(llvm_gendir, 'llvm-dlltool');
 
 common_tblgen_files:list[TblGen] =
 [
@@ -74,7 +81,7 @@ tblgen_files = common_tblgen_files;
 generated_headers = for i in tblgen_files
 {
 	source = file(i.source + '.td', subdir=i.dir);
-	target = file(i.target + '.inc', subdir=gendir::'llvm');
+	target = file(i.target + '.inc', subdir=llvm_gendir);
 
 	toolchain.tblgen.llvm(source, target, i.flags, [llvmroot::'include'])
 };

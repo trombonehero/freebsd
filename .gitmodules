@@ -1,0 +1,3 @@
+[submodule "contrib/fabrique"]
+	path = contrib/fabrique
+	url = https://gitlab.com/fabriquer/fabrique

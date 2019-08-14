@@ -42,7 +42,7 @@ options = import('options.fab');
 # default toolchain path from an environment variable. For now, however,
 # require a path to be passed in explicitly.
 #
-path:list[file] = args.path ? print("Missing '-D path=files(...)' argument");
+path:list[file] = args.path ? error("Missing '-D path=files(...)' argument");
 print('Toolchain path:');
 print(path);
 print('');

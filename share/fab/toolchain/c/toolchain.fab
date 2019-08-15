@@ -81,12 +81,19 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 {
 	record
 	{
-		# Compile a single source file into a corresponding object file
+		#
+		# Compile a single source file into a corresponding object file.
+		#
+		# If the source file has any of the following fields, they will be honoured:
+		#
+		#  - includes:list[file]      extra include directories for this file only
+		#  - dependencies:list[file]  dependencies that must be built first
+		#
 		compile_src = function(src:file[in],
 		                       options:Options=default_options,
 		                       extra_flags:list[string],
 		                       extra_header_dirs:list[file[in]],
-		                       dependencies:list[file[in]])
+		                       extra_dependencies:list[file[in]])
 			: file
 		{
 			cxx = not src.extension == 'c';
@@ -115,7 +122,8 @@ create = function(compilers:Compilers, default_options:Options, srcflags:Options
 				;
 
 			obj = src + '.o';
-			compile_one(compiler, src, obj, flags, dependencies);
+			src_deps = src.dependencies ? [];
+			compile_one(compiler, src, obj, flags, src_deps+extra_dependencies);
 
 			# Let the result be the generated file rather than the action that built it
 			obj

@@ -5,10 +5,6 @@ mkdir:(file,string,bool)->file = args.mkdir;
 opts = args.options;
 
 llvm_gendir = mkdir(gendir, 'llvm');
-
-ir_incdir = llvminclude :: 'IR';
-ir_gendir = mkdir(llvm_gendir, 'IR');
-
 mkdir(llvm_gendir, 'llvm-lib');
 mkdir(llvm_gendir, 'llvm-dlltool');
 
@@ -19,12 +15,6 @@ tblgen = function(source:file, gen_action:string, target:file): file
 {
 	toolchain.tblgen.llvm(source, target,
 	                      flags=['-gen-'+gen_action], includes=[llvmroot::'include'])
-}
-
-# llvm-tblgen wrapper for IR tblgen files
-ir_tblgen = function(sourcename:string, gen_action:string, targetname:string): file
-{
-	tblgen(ir_incdir::sourcename, gen_action, ir_gendir::targetname)
 }
 
 tool_source_dir = llvmlibdir :: 'ToolDrivers';
@@ -39,13 +29,6 @@ generated_headers =
 [
     tool_options('llvm-dlltool')
     tool_options('llvm-lib')
-
-	ir_tblgen('Attributes.td', 'attrs', 'Attributes.inc')
-	ir_tblgen('Intrinsics.td', 'intrinsic-enums', 'IntrinsicEnums.inc')
-	ir_tblgen('Intrinsics.td', 'intrinsic-impl', 'IntrinsicImpl.inc')
-
-	tblgen((llvmlibdir::'IR')::'AttributesCompatFunc.td', 'attrs',
-	       ir_gendir::'AttributesCompatFunc.inc')
 
 	tblgen(((llvmlibdir::'Transforms')::'InstCombine')::'InstCombineTables.td',
 	       'searchable-tables',

@@ -1,5 +1,18 @@
 # $FreeBSD$
 
+incdir = llvminclude :: 'IR';
+libdir = llvmlibdir :: 'IR';
+gendir = mkdir(llvm_gendir, 'IR');
+
+generated_sources =
+[
+	tblgen(incdir::'Attributes.td', 'attrs', gendir::'Attributes.inc')
+	tblgen(incdir::'Intrinsics.td', 'intrinsic-enums', gendir::'IntrinsicEnums.inc')
+	tblgen(incdir::'Intrinsics.td', 'intrinsic-impl', gendir::'IntrinsicImpl.inc')
+
+	tblgen(libdir::'AttributesCompatFunc.td', 'attrs', gendir::'AttributesCompatFunc.inc')
+];
+
 sources =
 {
 	subdir = llvmlibdir :: 'IR';
@@ -19,5 +32,7 @@ sources =
 		PassTimingInfo.cpp ProfileSummary.cpp SafepointIRVerifier.cpp
 		Statepoint.cpp Type.cpp TypeFinder.cpp Use.cpp User.cpp Value.cpp
 		ValueSymbolTable.cpp Verifier.cpp
+		,
+		dependencies=generated_sources
 	)
 };

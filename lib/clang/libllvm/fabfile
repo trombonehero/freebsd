@@ -4,86 +4,50 @@ mkdir:(file,string,bool)->file = args.mkdir;
 
 opts = args.options;
 
-TblGen = type record[
-	dir:file,
-	source:string,
-	target:string,
-	flags:list[string],
-];
-
 llvm_gendir = mkdir(gendir, 'llvm');
+
+ir_incdir = llvminclude :: 'IR';
 ir_gendir = mkdir(llvm_gendir, 'IR');
+
 mkdir(llvm_gendir, 'llvm-lib');
 mkdir(llvm_gendir, 'llvm-dlltool');
 
-common_tblgen_files:list[TblGen] =
+ir_tblgen = function(source:file, gen_action:string, target:file): file
+{
+	toolchain.tblgen.llvm(source, target,
+	                      flags=[gen_action], includes=[llvmroot::'include'])
+}
+
+tool_source_dir = llvmlibdir :: 'ToolDrivers';
+tool_options = function(tool_name:string): file
+{
+    ir_tblgen((tool_source_dir::tool_name)::'Options.td',
+              '-gen-opt-parser-defs',
+              (llvm_gendir::tool_name)::'Options.inc')
+};
+
+generated_headers =
 [
-	record
-	{
-		dir = llvminclude :: 'IR';
-		source = 'Attributes';
-		target = 'IR/Attributes';
-		flags = ['-gen-attrs'];
-	}
+    tool_options('llvm-dlltool')
+    tool_options('llvm-lib')
 
-	record
-	{
-		dir = llvmlibdir :: 'IR';
-		source = 'AttributesCompatFunc';
-		target = 'IR/AttributesCompatFunc';
-		flags = ['-gen-attrs'];
-	}
+	ir_tblgen(ir_incdir::'Attributes.td', '-gen-attrs',
+	          ir_gendir::'Attributes.inc')
 
-	record
-	{
-		dir = llvminclude :: 'IR';
-		source = 'Intrinsics';
-		target = 'IR/IntrinsicEnums';
-		flags = ['-gen-intrinsic-enums'];
-	}
+	ir_tblgen((llvmlibdir::'IR')::'AttributesCompatFunc.td', '-gen-attrs',
+	          ir_gendir::'AttributesCompatFunc.inc')
 
-	record
-	{
-		dir = llvminclude :: 'IR';
-		source = 'Intrinsics';
-		target = 'IR/IntrinsicImpl';
-		flags = ['-gen-intrinsic-impl'];
-	}
+	ir_tblgen(ir_incdir::'Intrinsics.td', '-gen-intrinsic-enums',
+	          ir_gendir::'IntrinsicEnums.inc')
 
-	record
-	{
-		dir = llvmlibdir :: 'Transforms/InstCombine';
-		source = 'InstCombineTables';
-		target = 'InstCombineTables';
-		flags = ['-gen-searchable-tables'];
-	}
+	ir_tblgen(ir_incdir::'Intrinsics.td', '-gen-intrinsic-impl',
+	          ir_gendir::'IntrinsicImpl.inc')
 
-	record
-	{
-		dir = llvmlibdir :: 'ToolDrivers/llvm-lib';
-		source = 'Options';
-		target = 'llvm-lib/Options';
-		flags = ['-gen-opt-parser-defs'];
-	}
-
-	record
-	{
-		dir = llvmlibdir :: 'ToolDrivers/llvm-dlltool';
-		source = 'Options';
-		target = 'llvm-dlltool/Options';
-		flags = ['-gen-opt-parser-defs'];
-	}
+	ir_tblgen(((llvmlibdir::'Transforms')::'InstCombine')::'InstCombineTables.td',
+	          '-gen-searchable-tables',
+	          llvm_gendir::'InstCombineTables.inc')
 ];
 
-tblgen_files = common_tblgen_files;
-
-generated_headers = for i in tblgen_files
-{
-	source = file(i.source + '.td', subdir=i.dir);
-	target = file(i.target + '.inc', subdir=llvm_gendir);
-
-	toolchain.tblgen.llvm(source, target, i.flags, [llvmroot::'include'])
-};
 
 sources =
 	import('Analysis.fab').sources

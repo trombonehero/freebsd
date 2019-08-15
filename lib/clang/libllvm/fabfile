@@ -12,18 +12,27 @@ ir_gendir = mkdir(llvm_gendir, 'IR');
 mkdir(llvm_gendir, 'llvm-lib');
 mkdir(llvm_gendir, 'llvm-dlltool');
 
-ir_tblgen = function(source:file, gen_action:string, target:file): file
+#
+# Wrapper around llvm-tblgen that uses our common LLVM include directory
+#
+tblgen = function(source:file, gen_action:string, target:file): file
 {
 	toolchain.tblgen.llvm(source, target,
-	                      flags=[gen_action], includes=[llvmroot::'include'])
+	                      flags=['-gen-'+gen_action], includes=[llvmroot::'include'])
+}
+
+# llvm-tblgen wrapper for IR tblgen files
+ir_tblgen = function(sourcename:string, gen_action:string, targetname:string): file
+{
+	tblgen(ir_incdir::sourcename, gen_action, ir_gendir::targetname)
 }
 
 tool_source_dir = llvmlibdir :: 'ToolDrivers';
 tool_options = function(tool_name:string): file
 {
-    ir_tblgen((tool_source_dir::tool_name)::'Options.td',
-              '-gen-opt-parser-defs',
-              (llvm_gendir::tool_name)::'Options.inc')
+    tblgen((tool_source_dir::tool_name)::'Options.td',
+           'opt-parser-defs',
+           (llvm_gendir::tool_name)::'Options.inc')
 };
 
 generated_headers =
@@ -31,21 +40,16 @@ generated_headers =
     tool_options('llvm-dlltool')
     tool_options('llvm-lib')
 
-	ir_tblgen(ir_incdir::'Attributes.td', '-gen-attrs',
-	          ir_gendir::'Attributes.inc')
+	ir_tblgen('Attributes.td', 'attrs', 'Attributes.inc')
+	ir_tblgen('Intrinsics.td', 'intrinsic-enums', 'IntrinsicEnums.inc')
+	ir_tblgen('Intrinsics.td', 'intrinsic-impl', 'IntrinsicImpl.inc')
 
-	ir_tblgen((llvmlibdir::'IR')::'AttributesCompatFunc.td', '-gen-attrs',
-	          ir_gendir::'AttributesCompatFunc.inc')
+	tblgen((llvmlibdir::'IR')::'AttributesCompatFunc.td', 'attrs',
+	       ir_gendir::'AttributesCompatFunc.inc')
 
-	ir_tblgen(ir_incdir::'Intrinsics.td', '-gen-intrinsic-enums',
-	          ir_gendir::'IntrinsicEnums.inc')
-
-	ir_tblgen(ir_incdir::'Intrinsics.td', '-gen-intrinsic-impl',
-	          ir_gendir::'IntrinsicImpl.inc')
-
-	ir_tblgen(((llvmlibdir::'Transforms')::'InstCombine')::'InstCombineTables.td',
-	          '-gen-searchable-tables',
-	          llvm_gendir::'InstCombineTables.inc')
+	tblgen(((llvmlibdir::'Transforms')::'InstCombine')::'InstCombineTables.td',
+	       'searchable-tables',
+	       llvm_gendir::'InstCombineTables.inc')
 ];
 
 

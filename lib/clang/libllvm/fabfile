@@ -5,8 +5,6 @@ mkdir:(file,string,bool)->file = args.mkdir;
 opts = args.options;
 
 llvm_gendir = mkdir(gendir, 'llvm');
-mkdir(llvm_gendir, 'llvm-lib');
-mkdir(llvm_gendir, 'llvm-dlltool');
 
 #
 # Wrapper around llvm-tblgen that uses our common LLVM include directory
@@ -16,20 +14,8 @@ tblgen = function(source:file, gen_action:string, target:file): file
 	toolchain.tblgen.llvm(source, target,
 	                      flags=['-gen-'+gen_action], includes=[llvmroot::'include'])
 }
-
-tool_source_dir = llvmlibdir :: 'ToolDrivers';
-tool_options = function(tool_name:string): file
-{
-    tblgen((tool_source_dir::tool_name)::'Options.td',
-           'opt-parser-defs',
-           (llvm_gendir::tool_name)::'Options.inc')
-};
-
 generated_headers =
 [
-    tool_options('llvm-dlltool')
-    tool_options('llvm-lib')
-
 	tblgen(((llvmlibdir::'Transforms')::'InstCombine')::'InstCombineTables.td',
 	       'searchable-tables',
 	       llvm_gendir::'InstCombineTables.inc')
@@ -77,25 +63,7 @@ sources =
 	+ import('Option.fab').sources
 	+ import('ProfileData.fab').sources
 	+ import('TableGen.fab').sources
-	+
-	{
-		subdir = llvmlibdir :: 'ToolDrivers';
-
-		file('DlltoolDriver.cpp',
-			includes=[(gendir::'llvm')::'llvm-dlltool'],  # TODO: fix `:::`
-			subdir=subdir::'llvm-dlltool')
-		::
-		(if opts.llvm.exl
-		{
-			file('LibDriver.cpp',
-				includes=[(gendir::'llvm')::'llvm-lib'],  # TODO: fix `:::`
-				subdir=subdir::'llvm-lib')
-		}
-		else [])
-		::
-		files()
-	}
-	+ import('Targets').sources
+	+ import('ToolDrivers.fab').sources
 	+ import('Transforms').sources
 	+ import('Support.fab').sources
 	+ import('XRay.fab').sources

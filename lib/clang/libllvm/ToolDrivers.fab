@@ -1,0 +1,18 @@
+# $FreeBSD$
+
+libdir = llvmlibdir :: 'ToolDrivers';
+
+tool = function(tool_name:string, driver_name:string): file
+{
+	gendir = mkdir(llvm_gendir, tool_name);
+	subdir = libdir :: tool_name;
+
+	gen = tblgen(subdir::'Options.td', 'opt-parser-defs', gendir::'Options.inc');
+	file(driver_name, includes=[gendir], dependencies=[gen])
+};
+
+sources:list[file] =
+	tool('llvm-dlltool', 'DlltoolDriver.cpp')
+	::
+	(if opts.llvm.exl [tool('llvm-lib', 'LibDriver.cpp')] else [])
+	;
